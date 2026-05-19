@@ -31,9 +31,9 @@ export default async function InboxPage() {
   const hasProcessing = reels.some(r => r.confidence === null)
 
   return (
-    <main className="px-4 py-8">
+    <main className="px-4 py-7 sm:py-9">
       <div className="max-w-2xl mx-auto mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight mb-4">Inbox</h1>
+        <h1 className="text-2xl font-semibold tracking-tight mb-4 text-[var(--travel-ink)]">Inbox</h1>
         <UrlInput />
       </div>
 

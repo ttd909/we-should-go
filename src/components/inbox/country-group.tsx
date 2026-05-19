@@ -37,12 +37,12 @@ export function CountryGroup({
   const showNudge = reels.length >= NUDGE_THRESHOLD && !hasTrip
 
   return (
-    <div className="rounded-xl overflow-hidden border border-border">
+    <div className="rounded-2xl overflow-hidden border border-sky-100/80 bg-white/75 shadow-[var(--travel-card-shadow)] backdrop-blur">
       {/* Header trigger */}
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <div
           className={cn(
-            'bg-sky-50 border-b border-sky-100',
+            'bg-gradient-to-r from-sky-100 via-cyan-50 to-amber-50 border-b border-sky-100',
             !open && 'border-b-0',
           )}
         >
@@ -50,7 +50,7 @@ export function CountryGroup({
             className={cn(
               'w-full flex items-center gap-2 px-4 py-3',
               'cursor-pointer select-none',
-              'hover:bg-sky-100 transition-colors duration-150',
+              'hover:bg-white/35 transition-colors duration-150',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             )}
           >
@@ -81,7 +81,7 @@ export function CountryGroup({
                 className={cn(
                   'flex items-center gap-0.5 text-xs font-semibold',
                   'text-amber-700 hover:text-amber-900 transition-colors',
-                  'bg-amber-100 hover:bg-amber-200 rounded-full px-2 py-1',
+              'bg-amber-200 hover:bg-amber-300 rounded-full px-2.5 py-1 shadow-sm',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 )}
                 aria-label={`Start a trip to ${country}`}

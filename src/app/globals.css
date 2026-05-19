@@ -49,29 +49,29 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.982 0.018 86);
+  --foreground: oklch(0.22 0.035 253);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.22 0.035 253);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.22 0.035 253);
+  --primary: oklch(0.57 0.17 241);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.94 0.035 238);
+  --secondary-foreground: oklch(0.29 0.055 246);
+  --muted: oklch(0.955 0.018 86);
+  --muted-foreground: oklch(0.48 0.035 246);
+  --accent: oklch(0.95 0.07 77);
+  --accent-foreground: oklch(0.33 0.075 62);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: oklch(0.88 0.022 83);
+  --input: oklch(0.86 0.02 83);
+  --ring: oklch(0.68 0.15 238);
+  --chart-1: oklch(0.65 0.18 242);
+  --chart-2: oklch(0.72 0.16 151);
+  --chart-3: oklch(0.73 0.17 67);
+  --chart-4: oklch(0.67 0.18 31);
+  --chart-5: oklch(0.62 0.14 292);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -123,6 +123,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.12), transparent 28rem),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 251, 235, 0.86) 22rem, rgba(240, 249, 255, 0.38)),
+      var(--background);
   }
   html {
     @apply font-sans;
@@ -132,14 +136,16 @@
 /* ── Travel design tokens ─────────────────────────────────── */
 :root {
   --travel-sky: #0EA5E9;
-  --travel-sky-bg: #F0F9FF;
-  --travel-sky-border: #BAE6FD;
+  --travel-sky-bg: #E0F2FE;
+  --travel-sky-border: #7DD3FC;
   --travel-orange: #F97316;
   --travel-amber: #F59E0B;
   --travel-amber-bg: #FFFBEB;
   --travel-amber-border: #FDE68A;
   --travel-red: #EF4444;
   --travel-green: #22C55E;
+  --travel-ink: #0F2742;
+  --travel-card-shadow: 0 14px 34px rgba(15, 39, 66, 0.08);
 }
 
 /* ── Base UI Collapsible panel height animation ───────────── */

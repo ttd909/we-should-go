@@ -14,13 +14,13 @@ export function StatsStrip({ total, countries, favourites, onFilterClick }: Stat
 
   return (
     <div
-      className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap"
+      className="flex items-center gap-1.5 text-xs font-medium text-slate-600 flex-wrap"
       aria-label="Inbox statistics"
     >
       <button
         type="button"
         onClick={() => onFilterClick('all')}
-        className="hover:text-foreground transition-colors underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
+        className="text-sky-700 hover:text-sky-900 transition-colors underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
       >
         {total} {total === 1 ? 'place' : 'places'}
       </button>

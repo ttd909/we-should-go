@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import { Drawer } from '@base-ui/react/drawer'
 import { X, MapPin, ExternalLink, Star } from 'lucide-react'
@@ -17,11 +18,15 @@ interface DetailDrawerProps {
 }
 
 export function DetailDrawer({ reel, open, onOpenChange, onFavourite }: DetailDrawerProps) {
+  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null)
+
   if (!reel) return null
 
   const destination = [reel.destination_city, reel.destination_country].filter(Boolean).join(', ')
   const flag = countryFlag(reel.destination_country)
   const mapsUrl = googleMapsUrl(reel)
+  const thumbnailUrl = reel.thumbnail_url
+  const showThumbnail = thumbnailUrl && failedThumbnailUrl !== thumbnailUrl
 
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} swipeDirection="down">
@@ -54,14 +59,15 @@ export function DetailDrawer({ reel, open, onOpenChange, onFavourite }: DetailDr
           <div className="overflow-y-auto flex-1 pb-8">
             {/* Thumbnail */}
             <div className="relative aspect-video mx-4 rounded-xl overflow-hidden mb-4">
-              {reel.thumbnail_url ? (
+              {showThumbnail ? (
                 <Image
-                  src={reel.thumbnail_url}
+                  src={thumbnailUrl}
                   alt={reel.place_name ?? 'Place photo'}
                   fill
                   unoptimized
                   className="object-cover"
                   sizes="100vw"
+                  onError={() => setFailedThumbnailUrl(thumbnailUrl)}
                 />
               ) : (
                 <div className={cn('absolute inset-0', placeGradient(reel.place_type))} />

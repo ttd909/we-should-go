@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,6 +12,12 @@ export function UrlInput() {
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+
+  useEffect(() => {
+    if (status !== 'saved') return
+    const timeout = setTimeout(() => setStatus('idle'), 8000)
+    return () => clearTimeout(timeout)
+  }, [status])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -49,28 +55,31 @@ export function UrlInput() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-2 rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[var(--travel-card-shadow)] backdrop-blur"
+    >
       <Input
         type="url"
         placeholder="Paste a TikTok or Instagram reel URL…"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         required
-        className="text-sm"
+        className="h-10 bg-white/90 text-sm shadow-inner shadow-sky-950/[0.03]"
       />
       <div className="flex gap-2">
         <Input
           placeholder='Optional note (e.g. "Susan really wants this")'
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="text-sm"
+          className="h-10 bg-white/90 text-sm shadow-inner shadow-sky-950/[0.03]"
         />
-        <Button type="submit" disabled={loading} className="shrink-0">
+        <Button type="submit" disabled={loading} className="h-10 shrink-0 bg-sky-600 px-4 shadow-sm hover:bg-sky-700">
           {loading ? 'Saving…' : 'Save'}
         </Button>
       </div>
       {status === 'saved' && (
-        <p className="text-xs text-muted-foreground">Saved — enriching in the background…</p>
+        <p className="text-xs text-muted-foreground">Saved. The card will update automatically.</p>
       )}
       {status === 'error' && (
         <p className="text-xs text-destructive">{errorMsg}</p>

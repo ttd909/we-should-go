@@ -10,13 +10,13 @@ export const PLACE_TYPE_LABEL: Record<string, string> = {
 }
 
 export const PLACE_TYPE_GRADIENT: Record<PlaceType | 'unknown', string> = {
-  cafe:        'bg-gradient-to-br from-amber-50 to-orange-100',
-  restaurant:  'bg-gradient-to-br from-red-50 to-rose-100',
-  hotel:       'bg-gradient-to-br from-sky-50 to-blue-100',
-  viewpoint:   'bg-gradient-to-br from-cyan-50 to-teal-100',
-  experience:  'bg-gradient-to-br from-violet-50 to-purple-100',
-  other:       'bg-gradient-to-br from-stone-50 to-zinc-100',
-  unknown:     'bg-gradient-to-br from-stone-50 to-zinc-100',
+  cafe:        'bg-[linear-gradient(135deg,#fff7ed_0%,#fed7aa_48%,#f97316_130%)]',
+  restaurant:  'bg-[linear-gradient(135deg,#fff1f2_0%,#fecdd3_52%,#ef4444_130%)]',
+  hotel:       'bg-[linear-gradient(135deg,#eff6ff_0%,#bae6fd_50%,#0284c7_130%)]',
+  viewpoint:   'bg-[linear-gradient(135deg,#ecfeff_0%,#99f6e4_48%,#0f766e_130%)]',
+  experience:  'bg-[linear-gradient(135deg,#faf5ff_0%,#ddd6fe_50%,#7c3aed_130%)]',
+  other:       'bg-[linear-gradient(135deg,#f8fafc_0%,#e2e8f0_50%,#64748b_130%)]',
+  unknown:     'bg-[linear-gradient(135deg,#f8fafc_0%,#e2e8f0_50%,#64748b_130%)]',
 }
 
 export function placeGradient(type: PlaceType | null | undefined): string {

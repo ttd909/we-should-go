@@ -115,6 +115,7 @@ interface PlaceCardProps {
 
 export function PlaceCard({ reel, index = 0, onReject, onFavourite, onOpen }: PlaceCardProps) {
   const [starPulse, setStarPulse] = useState(false)
+  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null)
   const clickBlocked = useRef(false)
 
   const handleReject = useCallback(() => {
@@ -136,6 +137,8 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onOpen }: Pl
   const isNeedsReview = reel.status === 'needs_review'
   const destination   = [reel.destination_city, reel.destination_country].filter(Boolean).join(', ')
   const flag          = countryFlag(reel.destination_country)
+  const thumbnailUrl  = reel.thumbnail_url
+  const showThumbnail = thumbnailUrl && failedThumbnailUrl !== thumbnailUrl
 
   const absOffset  = Math.abs(offset)
   const revealRatio = Math.min(absOffset / SWIPE_THRESHOLD, 1)
@@ -189,10 +192,10 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onOpen }: Pl
       <div
         className={cn(
           'relative bg-card border border-border rounded-xl overflow-hidden shadow-sm',
-          'hover:shadow-md transition-shadow duration-200 cursor-pointer select-none',
+          'hover:shadow-lg hover:border-sky-200 transition-all duration-200 cursor-pointer select-none',
           'animate-in fade-in zoom-in-95 duration-300',
         )}
-        style={cardStyle}
+        style={{ ...cardStyle, boxShadow: 'var(--travel-card-shadow)' }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -209,14 +212,15 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onOpen }: Pl
       >
         {/* Thumbnail */}
         <div className="relative aspect-video overflow-hidden">
-          {reel.thumbnail_url ? (
+          {showThumbnail ? (
             <Image
-              src={reel.thumbnail_url}
+              src={thumbnailUrl}
               alt={reel.place_name ?? 'Place photo'}
               fill
               unoptimized
               className="object-cover"
               sizes="(max-width: 640px) 50vw, 33vw"
+              onError={() => setFailedThumbnailUrl(thumbnailUrl)}
             />
           ) : (
             <div className={cn('absolute inset-0', placeGradient(reel.place_type))} />

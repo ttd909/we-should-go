@@ -22,6 +22,7 @@ function NeedsReviewCard({
 }) {
   const [input, setInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,19 +35,22 @@ function NeedsReviewCard({
   const destination = [reel.destination_city, reel.destination_country]
     .filter(Boolean)
     .join(', ')
+  const thumbnailUrl = reel.thumbnail_url
+  const showThumbnail = thumbnailUrl && failedThumbnailUrl !== thumbnailUrl
 
   return (
     <div className="flex gap-3 py-3 border-b border-border last:border-0">
       {/* Thumbnail */}
       <div className="relative shrink-0 w-16 h-16 rounded-lg overflow-hidden">
-        {reel.thumbnail_url ? (
+        {showThumbnail ? (
           <Image
-            src={reel.thumbnail_url}
+            src={thumbnailUrl}
             alt="Place thumbnail"
             fill
             unoptimized
             className="object-cover"
             sizes="64px"
+            onError={() => setFailedThumbnailUrl(thumbnailUrl)}
           />
         ) : (
           <div className={cn('absolute inset-0', placeGradient(reel.place_type))} />

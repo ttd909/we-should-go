@@ -37,8 +37,8 @@ export function FilterChips({ active, submitters, onSelect, needsReviewCount }: 
             'min-h-[36px] whitespace-nowrap transition-colors duration-150',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             active === chip.value
-              ? 'bg-sky-500 text-white border border-transparent'
-              : 'bg-muted text-muted-foreground border border-border hover:bg-muted/80',
+              ? 'bg-sky-600 text-white border border-sky-600 shadow-sm shadow-sky-600/20'
+              : 'bg-white/80 text-slate-600 border border-slate-200 hover:bg-sky-50 hover:text-sky-800',
           )}
           aria-pressed={active === chip.value}
         >
