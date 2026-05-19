@@ -2,7 +2,7 @@
 Reel content extraction.
 
 Primary path (both platforms): yt_dlp Python API → frames + whisper transcript.
-Fallback path: TikTok oEmbed or Open Graph meta scraping → thumbnail + caption.
+Fallback path: TikTok oEmbed or page meta scraping → thumbnail + caption.
 
 Using the yt_dlp Python API (not subprocess) avoids PATH issues on Windows.
 ffmpeg is used for frame extraction but degrades gracefully if not installed.
@@ -197,9 +197,28 @@ def _ytdlp_extract(url: str) -> dict:
             'transcript': transcript,
             'caption': info.get('description') or info.get('title'),
             'author': info.get('uploader') or info.get('channel'),
-            'thumbnail_url': info.get('thumbnail'),
+            'thumbnail_url': _pick_thumbnail(info),
             'is_fallback': False,
         }
+
+
+def _pick_thumbnail(info: dict) -> Optional[str]:
+    thumbnail = info.get('thumbnail')
+    if isinstance(thumbnail, str) and thumbnail.startswith('http'):
+        return thumbnail
+
+    thumbnails = info.get('thumbnails')
+    if isinstance(thumbnails, list):
+        candidates = [
+            item.get('url')
+            for item in thumbnails
+            if isinstance(item, dict) and isinstance(item.get('url'), str)
+        ]
+        http_candidates = [url for url in candidates if url.startswith('http')]
+        if http_candidates:
+            return http_candidates[-1]
+
+    return None
 
 
 def _extract_frames(video_path: str, tmpdir: str) -> list[str]:
@@ -255,9 +274,9 @@ class _OGParser(HTMLParser):
         if tag != 'meta':
             return
         d = dict(attrs)
-        prop = d.get('property', '')
-        if prop.startswith('og:') and 'content' in d:
-            self.og[prop] = d['content']
+        key = d.get('property') or d.get('name') or d.get('itemprop') or ''
+        if key and 'content' in d:
+            self.og[key] = d['content']
 
 
 def _og_scrape(url: str, shortcut_metadata: dict, platform: str) -> dict:
@@ -277,9 +296,24 @@ def _og_scrape(url: str, shortcut_metadata: dict, platform: str) -> dict:
     return {
         'frames': None,
         'transcript': None,
-        'caption': og.get('og:description') or meta.get('page_description'),
-        'author': og.get('og:title') or meta.get('page_title'),
-        'thumbnail_url': og.get('og:image') or meta.get('thumbnail_url'),
+        'caption': (
+            og.get('og:description')
+            or og.get('twitter:description')
+            or meta.get('page_description')
+        ),
+        'author': (
+            og.get('og:title')
+            or og.get('twitter:title')
+            or meta.get('page_title')
+        ),
+        'thumbnail_url': (
+            og.get('og:image')
+            or og.get('og:image:secure_url')
+            or og.get('twitter:image')
+            or og.get('twitter:image:src')
+            or og.get('image')
+            or meta.get('thumbnail_url')
+        ),
         'source_platform': platform,
         'is_fallback': True,
     }
