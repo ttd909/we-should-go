@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { Collapsible } from '@base-ui/react/collapsible'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { placeGradient } from './card-utils'
+import { googlePlacePhotoUrl, placeGradient } from './card-utils'
 import type { ReelSubmission } from '@/lib/types'
 
 interface NeedsReviewSectionProps {
@@ -35,22 +35,28 @@ function NeedsReviewCard({
   const destination = [reel.destination_city, reel.destination_country]
     .filter(Boolean)
     .join(', ')
-  const thumbnailUrl = reel.thumbnail_url
-  const showThumbnail = thumbnailUrl && failedThumbnailUrl !== thumbnailUrl
+  const socialThumbnailUrl = reel.thumbnail_url
+  const googleThumbnailUrl = googlePlacePhotoUrl(reel.google_photo_name, 160)
+  const imageUrl =
+    socialThumbnailUrl && failedThumbnailUrl !== socialThumbnailUrl
+      ? socialThumbnailUrl
+      : googleThumbnailUrl && failedThumbnailUrl !== googleThumbnailUrl
+        ? googleThumbnailUrl
+        : null
 
   return (
     <div className="flex gap-3 py-3 border-b border-border last:border-0">
       {/* Thumbnail */}
       <div className="relative shrink-0 w-16 h-16 rounded-lg overflow-hidden">
-        {showThumbnail ? (
+        {imageUrl ? (
           <Image
-            src={thumbnailUrl}
+            src={imageUrl}
             alt="Place thumbnail"
             fill
             unoptimized
             className="object-cover"
             sizes="64px"
-            onError={() => setFailedThumbnailUrl(thumbnailUrl)}
+            onError={() => setFailedThumbnailUrl(imageUrl)}
           />
         ) : (
           <div className={cn('absolute inset-0', placeGradient(reel.place_type))} />

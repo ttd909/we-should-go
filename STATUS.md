@@ -6,8 +6,9 @@
 - Railway worker is connected to the same Supabase project and successfully polling `extraction_jobs`
 - TikTok `yt-dlp` failures now fall back to TikTok oEmbed metadata instead of hard-failing immediately
 - Anthropic key issue was fixed in Railway by keeping `ANTHROPIC_API_KEY` as only the Anthropic key value
-- Google Places resolution has been added to the worker, but production needs `GOOGLE_PLACES_API_KEY` in Railway
+- Google Places resolution has been added to the worker; production needs `GOOGLE_PLACES_API_KEY` in Railway
 - Google Maps links have been added to reel cards, backed by `google_place_id` when available
+- Google Places photo fallback has been added; production needs `GOOGLE_PLACES_API_KEY` in Vercel for `/api/place-photo`
 
 **Manual step still required:** run `supabase/migrations/005_google_place_id.sql` in Supabase SQL Editor before the worker can save `google_place_id`.
 
@@ -53,6 +54,7 @@
 - `extraction_jobs` table: `id`, `reel_submission_id`, `status` (pending/processing/completed/failed), `error_message`, `shortcut_metadata jsonb`, timestamps
 - `claim_extraction_job()` stored procedure — `FOR UPDATE SKIP LOCKED`, safe for concurrent workers
 - `supabase/migrations/005_google_place_id.sql` adds `google_place_id` for precise Google Maps deep links
+- `supabase/migrations/007_google_photo_name.sql` adds `google_photo_name` for Google Places photo fallback
 
 **Pending production database action:** run migration 005 manually in Supabase:
 
@@ -104,8 +106,9 @@ create index if not exists reel_submissions_google_place_id_idx
 | `src/lib/actions/settings.ts` | **Created** | `regenerateToken()` server action — generates new 32-byte hex token, updates DB, revalidates `/settings`. |
 | `src/components/settings/copy-token.tsx` | **Modified** | Added two-tap Regenerate button (first tap shows warning, second confirms). `min-h-[44px]` tap targets for mobile. |
 | `src/components/inbox/reel-card.tsx` | **Modified** | Added `Google Maps ↗` link when Google place ID or coordinates are available. |
-| `src/lib/types.ts` | **Modified** | Added `google_place_id` to `ReelSubmission`. |
-| `.env.local.example` | **Modified** | Removed `META_APP_ACCESS_TOKEN`, added note about Railway worker env vars. |
+| `src/app/api/place-photo/route.ts` | **Created** | Server-side Google Places photo proxy so the browser never sees the API key. |
+| `src/lib/types.ts` | **Modified** | Added `google_place_id` and `google_photo_name` to `ReelSubmission`. |
+| `.env.local.example` | **Modified** | Added server-side `GOOGLE_PLACES_API_KEY` for the Vercel photo proxy. |
 | `src/lib/pipeline/*` | **Deleted** | Removed obsolete Vercel-side extraction pipeline. Railway now owns extraction. |
 
 ### Documentation
@@ -140,6 +143,7 @@ Vercel and Railway do not call each other directly. They communicate through Sup
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API |
+| `GOOGLE_PLACES_API_KEY` | Google Cloud Console → Places API (New), used by `/api/place-photo` |
 
 ### Railway worker (`worker/.env` locally, Railway Variables tab in prod)
 | Variable | Notes |

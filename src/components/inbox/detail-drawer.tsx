@@ -7,7 +7,7 @@ import { X, MapPin, ExternalLink, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { countryFlag } from '@/lib/country-flag'
-import { PLACE_TYPE_LABEL, placeGradient, googleMapsUrl } from './card-utils'
+import { PLACE_TYPE_LABEL, googleMapsUrl, googlePlacePhotoUrl, placeGradient } from './card-utils'
 import type { ReelSubmission } from '@/lib/types'
 
 interface DetailDrawerProps {
@@ -25,8 +25,14 @@ export function DetailDrawer({ reel, open, onOpenChange, onFavourite }: DetailDr
   const destination = [reel.destination_city, reel.destination_country].filter(Boolean).join(', ')
   const flag = countryFlag(reel.destination_country)
   const mapsUrl = googleMapsUrl(reel)
-  const thumbnailUrl = reel.thumbnail_url
-  const showThumbnail = thumbnailUrl && failedThumbnailUrl !== thumbnailUrl
+  const socialThumbnailUrl = reel.thumbnail_url
+  const googleThumbnailUrl = googlePlacePhotoUrl(reel.google_photo_name, 1000)
+  const imageUrl =
+    socialThumbnailUrl && failedThumbnailUrl !== socialThumbnailUrl
+      ? socialThumbnailUrl
+      : googleThumbnailUrl && failedThumbnailUrl !== googleThumbnailUrl
+        ? googleThumbnailUrl
+        : null
 
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} swipeDirection="down">
@@ -59,15 +65,15 @@ export function DetailDrawer({ reel, open, onOpenChange, onFavourite }: DetailDr
           <div className="overflow-y-auto flex-1 pb-8">
             {/* Thumbnail */}
             <div className="relative aspect-video mx-4 rounded-xl overflow-hidden mb-4">
-              {showThumbnail ? (
+              {imageUrl ? (
                 <Image
-                  src={thumbnailUrl}
+                  src={imageUrl}
                   alt={reel.place_name ?? 'Place photo'}
                   fill
                   unoptimized
                   className="object-cover"
                   sizes="100vw"
-                  onError={() => setFailedThumbnailUrl(thumbnailUrl)}
+                  onError={() => setFailedThumbnailUrl(imageUrl)}
                 />
               ) : (
                 <div className={cn('absolute inset-0', placeGradient(reel.place_type))} />

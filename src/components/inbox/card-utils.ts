@@ -39,3 +39,11 @@ export function googleMapsUrl(reel: {
   }
   return null
 }
+
+export function googlePlacePhotoUrl(
+  googlePhotoName: string | null | undefined,
+  width = 640,
+): string | null {
+  if (!googlePhotoName) return null
+  return `/api/place-photo?name=${encodeURIComponent(googlePhotoName)}&w=${width}`
+}

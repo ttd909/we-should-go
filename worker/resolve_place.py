@@ -1,7 +1,7 @@
 """
 Google Places resolution for extracted travel places.
 
-Takes Claude's text fields and resolves them into place_id/address/lat/lng for maps.
+Takes Claude's text fields and resolves them into place_id/photo/address/lat/lng.
 If GOOGLE_PLACES_API_KEY is not set or the lookup fails, callers get None and
 the worker still completes the extraction job.
 """
@@ -32,7 +32,7 @@ def resolve_place(extraction: dict) -> Optional[dict]:
             headers={
                 'Content-Type': 'application/json',
                 'X-Goog-Api-Key': api_key,
-                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location',
+                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.photos',
             },
             json={'textQuery': query, 'maxResultCount': 1},
             timeout=12,
@@ -46,9 +46,12 @@ def resolve_place(extraction: dict) -> Optional[dict]:
         place = places[0]
         location = place.get('location') or {}
         display_name = place.get('displayName') or {}
+        photos = place.get('photos') or []
+        photo = photos[0] if photos else {}
 
         return {
             'google_place_id': place.get('id'),
+            'google_photo_name': photo.get('name') if isinstance(photo, dict) else None,
             'place_name': display_name.get('text'),
             'address': place.get('formattedAddress'),
             'latitude': location.get('latitude'),

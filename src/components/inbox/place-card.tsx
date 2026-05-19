@@ -6,7 +6,7 @@ import { Star, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { countryFlag } from '@/lib/country-flag'
-import { PLACE_TYPE_LABEL, placeGradient } from './card-utils'
+import { PLACE_TYPE_LABEL, googlePlacePhotoUrl, placeGradient } from './card-utils'
 import type { ReelSubmission } from '@/lib/types'
 
 const SWIPE_THRESHOLD = 80
@@ -137,8 +137,14 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onOpen }: Pl
   const isNeedsReview = reel.status === 'needs_review'
   const destination   = [reel.destination_city, reel.destination_country].filter(Boolean).join(', ')
   const flag          = countryFlag(reel.destination_country)
-  const thumbnailUrl  = reel.thumbnail_url
-  const showThumbnail = thumbnailUrl && failedThumbnailUrl !== thumbnailUrl
+  const socialThumbnailUrl = reel.thumbnail_url
+  const googleThumbnailUrl = googlePlacePhotoUrl(reel.google_photo_name, 640)
+  const imageUrl =
+    socialThumbnailUrl && failedThumbnailUrl !== socialThumbnailUrl
+      ? socialThumbnailUrl
+      : googleThumbnailUrl && failedThumbnailUrl !== googleThumbnailUrl
+        ? googleThumbnailUrl
+        : null
 
   const absOffset  = Math.abs(offset)
   const revealRatio = Math.min(absOffset / SWIPE_THRESHOLD, 1)
@@ -212,15 +218,15 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onOpen }: Pl
       >
         {/* Thumbnail */}
         <div className="relative aspect-video overflow-hidden">
-          {showThumbnail ? (
+          {imageUrl ? (
             <Image
-              src={thumbnailUrl}
+              src={imageUrl}
               alt={reel.place_name ?? 'Place photo'}
               fill
               unoptimized
               className="object-cover"
               sizes="(max-width: 640px) 50vw, 33vw"
-              onError={() => setFailedThumbnailUrl(thumbnailUrl)}
+              onError={() => setFailedThumbnailUrl(imageUrl)}
             />
           ) : (
             <div className={cn('absolute inset-0', placeGradient(reel.place_type))} />
