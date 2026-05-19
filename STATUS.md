@@ -41,6 +41,7 @@
 - `needs_review` added to `reel_status` enum
 - `extraction_jobs` table: `id`, `reel_submission_id`, `status` (pending/processing/completed/failed), `error_message`, `shortcut_metadata jsonb`, timestamps
 - `claim_extraction_job()` stored procedure — `FOR UPDATE SKIP LOCKED`, safe for concurrent workers
+- `supabase/migrations/005_google_place_id.sql` adds `google_place_id` for precise Google Maps deep links
 
 ### Railway worker
 
@@ -48,10 +49,10 @@
 
 | File | Purpose |
 |---|---|
-| `worker/main.py` | Polling loop. Calls `claim_extraction_job()` RPC, dispatches to `process_job()`. Enforces confidence cap (0.7 for fallback path, `needs_review` status below 0.5). Resolves address/lat/lng with Google Places when configured. |
+| `worker/main.py` | Polling loop. Calls `claim_extraction_job()` RPC, dispatches to `process_job()`. Enforces confidence cap (0.7 for fallback path, `needs_review` status below 0.5). Resolves Google place ID/address/lat/lng when configured. |
 | `worker/extract_reel.py` | Two-path extraction. Primary: yt_dlp Python API (no subprocess, avoids PATH issues) → ffmpeg frames (gracefully skipped if ffmpeg not installed) → faster-whisper transcript. Fallback: TikTok oEmbed or OG scraping + shortcut metadata backstop. |
 | `worker/claude_extract.py` | Sends up to 5 frames or a thumbnail + all available text to Claude. Handles both primary and fallback input shapes. |
-| `worker/resolve_place.py` | Google Places Text Search resolver for address, latitude, and longitude. |
+| `worker/resolve_place.py` | Google Places Text Search resolver for place ID, address, latitude, and longitude. |
 | `worker/requirements.txt` | `anthropic`, `supabase`, `faster-whisper`, `yt-dlp`, `requests`, `python-dotenv` |
 | `worker/Dockerfile` | Python 3.11-slim + ffmpeg. Used on Railway. |
 | `worker/railway.toml` | Railway deploy config. |

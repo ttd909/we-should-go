@@ -113,6 +113,7 @@ def process_job(sb: Client, job: dict) -> None:
         }
         if resolved:
             update_data.update({
+                'google_place_id': resolved.get('google_place_id'),
                 'place_name': resolved.get('place_name') or place_name,
                 'address': resolved.get('address'),
                 'latitude': resolved.get('latitude'),

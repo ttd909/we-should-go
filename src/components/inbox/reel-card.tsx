@@ -18,11 +18,23 @@ const PLACE_TYPE_LABEL: Record<string, string> = {
   other: 'Place',
 }
 
+function googleMapsUrl(reel: ReelSubmission): string | null {
+  const query = reel.place_name ?? reel.address ?? null
+  if (query && reel.google_place_id) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}&query_place_id=${encodeURIComponent(reel.google_place_id)}`
+  }
+  if (reel.latitude !== null && reel.longitude !== null) {
+    return `https://www.google.com/maps/search/?api=1&query=${reel.latitude},${reel.longitude}`
+  }
+  return null
+}
+
 export function ReelCard({ reel }: { reel: ReelSubmission }) {
   // confidence is null only while enrichment is still in flight
   const isProcessing = reel.confidence === null
   const destination = [reel.destination_city, reel.destination_country].filter(Boolean).join(', ')
   const needsReview = reel.confidence !== null && reel.confidence < 0.6
+  const mapsUrl = googleMapsUrl(reel)
 
   return (
     <Card className={needsReview && !isProcessing ? 'border-amber-200 dark:border-amber-800' : ''}>
@@ -81,6 +93,16 @@ export function ReelCard({ reel }: { reel: ReelSubmission }) {
             {PLATFORM_LABEL[reel.platform] ?? reel.platform}
           </span>
           <div className="flex items-center gap-3">
+            {mapsUrl && (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary underline underline-offset-2"
+              >
+                Google Maps ↗
+              </a>
+            )}
             <a
               href={reel.url}
               target="_blank"

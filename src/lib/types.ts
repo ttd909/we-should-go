@@ -21,6 +21,7 @@ export interface ReelSubmission {
   caption_text: string | null
   notes: string | null
   place_name: string | null
+  google_place_id: string | null
   address: string | null
   latitude: number | null
   longitude: number | null
