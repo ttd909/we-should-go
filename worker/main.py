@@ -3,12 +3,14 @@ We Should Go — Railway extraction worker.
 
 Polls Supabase for pending extraction_jobs, claims them atomically,
 runs yt-dlp (primary) or OG scraping (Instagram fallback), calls Claude,
+resolves places with Google Places when configured,
 then writes results back to reel_submissions.
 
 Env vars required:
   SUPABASE_URL
   SUPABASE_SERVICE_ROLE_KEY
   ANTHROPIC_API_KEY
+  GOOGLE_PLACES_API_KEY
 """
 import logging
 import os
@@ -22,6 +24,7 @@ from supabase import create_client, Client
 
 from extract_reel import extract_reel
 from claude_extract import extract_place
+from resolve_place import resolve_place
 
 logging.basicConfig(
     level=logging.INFO,
@@ -95,7 +98,9 @@ def process_job(sb: Client, job: dict) -> None:
             status = 'inbox'
             place_name = result.get('place_name')
 
-        sb.table('reel_submissions').update({
+        resolved = resolve_place({**result, 'place_name': place_name})
+
+        update_data = {
             'caption_text': extraction_input.get('caption'),
             'place_name': place_name,
             'destination_city': result.get('city'),
@@ -105,7 +110,16 @@ def process_job(sb: Client, job: dict) -> None:
             'tags': result.get('tags', []),
             'confidence': confidence,
             'status': status,
-        }).eq('id', reel_id).execute()
+        }
+        if resolved:
+            update_data.update({
+                'place_name': resolved.get('place_name') or place_name,
+                'address': resolved.get('address'),
+                'latitude': resolved.get('latitude'),
+                'longitude': resolved.get('longitude'),
+            })
+
+        sb.table('reel_submissions').update(update_data).eq('id', reel_id).execute()
 
         sb.table('extraction_jobs').update({
             'status': 'completed',
