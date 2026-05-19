@@ -24,6 +24,15 @@ async function getAuthedUserId(request: NextRequest): Promise<string | null> {
   return user?.id ?? null
 }
 
+function coerceShortcutString(value: unknown): string | null {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) {
+    const firstString = value.find((item): item is string => typeof item === 'string')
+    return firstString ?? null
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   const userId = await getAuthedUserId(request)
   if (!userId) {
@@ -44,9 +53,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { url, notes, submitted_by_label, page_title, page_description, thumbnail_url } = body
+  const { page_title, page_description, thumbnail_url } = body
+  const url = coerceShortcutString(body.url)
+  const notes = coerceShortcutString(body.notes)
+  const submitted_by_label = coerceShortcutString(body.submitted_by_label)
 
-  if (!url || typeof url !== 'string') {
+  if (!url) {
     return NextResponse.json({ error: '"url" is required' }, { status: 400 })
   }
 
@@ -126,7 +138,12 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json(
-    { job_id: job?.id ?? null, message: 'Saved — extracting place now' },
+    {
+      ok: true,
+      reel_id: reel.id,
+      job_id: job?.id ?? null,
+      message: 'Saved — extracting place now',
+    },
     { status: 202 }
   )
 }
