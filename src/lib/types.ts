@@ -1,5 +1,5 @@
 export type ReelPlatform = 'instagram' | 'tiktok' | 'other'
-export type ReelStatus = 'inbox' | 'saved' | 'scheduled' | 'rejected'
+export type ReelStatus = 'inbox' | 'saved' | 'scheduled' | 'rejected' | 'needs_review'
 export type PlaceType = 'cafe' | 'hotel' | 'restaurant' | 'viewpoint' | 'experience' | 'other'
 export type TripStatus = 'idea' | 'planning' | 'booked' | 'completed'
 export type AnchorType = 'flight' | 'hotel' | 'event' | 'reservation'
@@ -34,6 +34,7 @@ export interface ReelSubmission {
   confidence: number | null
   trip_id: string | null
   status: ReelStatus
+  thumbnail_url: string | null
   created_at: string
 }
 

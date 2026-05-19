@@ -1,5 +1,16 @@
 # We Should Go — Build Status
 
+## Current deployment status
+
+- Vercel app is live and rendering successfully at `https://we-should-go-nine.vercel.app/`
+- Railway worker is connected to the same Supabase project and successfully polling `extraction_jobs`
+- TikTok `yt-dlp` failures now fall back to TikTok oEmbed metadata instead of hard-failing immediately
+- Anthropic key issue was fixed in Railway by keeping `ANTHROPIC_API_KEY` as only the Anthropic key value
+- Google Places resolution has been added to the worker, but production needs `GOOGLE_PLACES_API_KEY` in Railway
+- Google Maps links have been added to reel cards, backed by `google_place_id` when available
+
+**Manual step still required:** run `supabase/migrations/005_google_place_id.sql` in Supabase SQL Editor before the worker can save `google_place_id`.
+
 ## Phase 1 — Core app (complete)
 
 **What was built:**
@@ -43,6 +54,17 @@
 - `claim_extraction_job()` stored procedure — `FOR UPDATE SKIP LOCKED`, safe for concurrent workers
 - `supabase/migrations/005_google_place_id.sql` adds `google_place_id` for precise Google Maps deep links
 
+**Pending production database action:** run migration 005 manually in Supabase:
+
+```sql
+alter table public.reel_submissions
+  add column if not exists google_place_id text;
+
+create index if not exists reel_submissions_google_place_id_idx
+  on public.reel_submissions (google_place_id)
+  where google_place_id is not null;
+```
+
 ### Railway worker
 
 **Created:** `worker/` (Python service inside the app repo)
@@ -66,6 +88,9 @@
 - Added `encoding='utf-8'` when reading yt_dlp info JSON — fixes Windows cp1252 default
 - ffmpeg frame extraction degrades to `[]` rather than crashing when ffmpeg is not installed
 - Added `python-dotenv` so the worker loads `worker/.env` automatically
+- Added Claude connection retries for transient Anthropic API connection errors
+- Added TikTok oEmbed fallback when TikTok video download is blocked or unavailable
+- Added Google Places Text Search resolution after Claude extraction
 
 ### Vercel app changes
 
@@ -78,6 +103,8 @@
 | `src/lib/platform.ts` | **Created** | Shared TikTok/Instagram URL platform detection for app API routes. |
 | `src/lib/actions/settings.ts` | **Created** | `regenerateToken()` server action — generates new 32-byte hex token, updates DB, revalidates `/settings`. |
 | `src/components/settings/copy-token.tsx` | **Modified** | Added two-tap Regenerate button (first tap shows warning, second confirms). `min-h-[44px]` tap targets for mobile. |
+| `src/components/inbox/reel-card.tsx` | **Modified** | Added `Google Maps ↗` link when Google place ID or coordinates are available. |
+| `src/lib/types.ts` | **Modified** | Added `google_place_id` to `ReelSubmission`. |
 | `.env.local.example` | **Modified** | Removed `META_APP_ACCESS_TOKEN`, added note about Railway worker env vars. |
 | `src/lib/pipeline/*` | **Deleted** | Removed obsolete Vercel-side extraction pipeline. Railway now owns extraction. |
 
@@ -98,6 +125,10 @@ The Vercel app queues extraction jobs only. The obsolete Vercel-side extraction 
 |---|---|---|
 | Vercel | repo root (`we-should-go`) | Next.js app. Build with `npm run build`. |
 | Railway | `worker/` | Python worker. Uses `worker/Dockerfile`, `worker/railway.toml`, and `worker/requirements.txt`. |
+
+Vercel and Railway do not call each other directly. They communicate through Supabase:
+
+`Vercel app → extraction_jobs row → Railway worker → reel_submissions update → Vercel app reads updated reel`
 
 ---
 
@@ -120,10 +151,54 @@ The Vercel app queues extraction jobs only. The obsolete Vercel-side extraction 
 
 ---
 
+---
+
+## Phase 1.5.5 — Inbox UI redesign (complete)
+
+**Design system:** Editorial Minimalism + Aurora accents (via UI/UX Pro Max). Libre Bodoni serif for place names/headers, Geist Sans for UI chrome. Travel colour tokens in globals.css.
+
+**What was built:**
+
+| File | Status | What changed |
+|---|---|---|
+| `supabase/migrations/006_thumbnail_url.sql` | **Created** | Adds `thumbnail_url text` column to `reel_submissions` |
+| `worker/main.py` | **Modified** | Copies `thumbnail_url` from `shortcut_metadata` (or extraction) into `reel_submissions` update |
+| `src/lib/types.ts` | **Modified** | Added `needs_review` to `ReelStatus`; added `thumbnail_url` to `ReelSubmission` |
+| `next.config.ts` | **Modified** | Added `remotePatterns` wildcard for external thumbnail images |
+| `src/lib/actions/reels.ts` | **Modified** | Added `softRejectReel`, `unrejectReel`, `toggleFavourite`, `resolveNeedsReview` |
+| `src/app/globals.css` | **Modified** | Travel CSS tokens; Base UI Collapsible + Drawer animation CSS; star-pulse keyframe; reduced-motion overrides |
+| `src/lib/country-flag.ts` | **Created** | Country name → flag emoji lookup |
+| `src/components/inbox/card-utils.ts` | **Created** | Shared place-type labels, gradient classes, Google Maps URL builder |
+| `src/components/inbox/place-card.tsx` | **Created** | Card with thumbnail/gradient, star toggle, swipe gestures (touch + mouse drag) |
+| `src/components/inbox/detail-drawer.tsx` | **Created** | `@base-ui/react` Drawer bottom sheet — full place detail, links, star |
+| `src/components/inbox/filter-chips.tsx` | **Created** | Sticky horizontal chip row (All / submitters / Favourites / Needs review) |
+| `src/components/inbox/stats-strip.tsx` | **Created** | Tappable stats strip: places · countries · favourited |
+| `src/components/inbox/needs-review-section.tsx` | **Created** | Collapsible amber section with inline place-name inputs |
+| `src/components/inbox/country-group.tsx` | **Created** | `@base-ui/react` Collapsible group per country with ready-to-plan nudge |
+| `src/components/inbox/inbox-client.tsx` | **Created** | Client orchestrator: `useOptimistic`, all handlers, filter/view-mode state |
+| `src/app/page.tsx` | **Modified** | Fetches all reels (incl. rejected) + trips; passes to `InboxClient` |
+| `src/app/trips/new/page.tsx` | **Modified** | Reads `?destination_country=` query param to pre-fill form from nudge button |
+
+**Manual step required:** run `supabase/migrations/006_thumbnail_url.sql` in Supabase SQL Editor before thumbnails will be stored by the worker.
+
+**Features delivered:**
+- Card grid (2-col mobile, 3-col desktop) with thumbnails or place-type gradients
+- Country grouping, collapsible, sorted by count desc
+- Swipe left → reject (with exit animation); swipe right → favourite (with star pulse) — works on both touch and mouse drag
+- Filter chips: All / submitter labels / Favourites / Needs review
+- Needs review collapsible section with inline place-name resolution
+- Stats strip: total · countries · favourited (tappable)
+- Ready-to-plan nudge (≥5 saves, no trip for that country)
+- Show/hide rejected toggle
+- Detail drawer (Base UI Drawer, swipe-to-close on mobile)
+- `useOptimistic` for immediate UI feedback on all mutations
+
+---
+
 ## Phase 2 — planned
 
 - **`needs_review` flow** — inline editing card in the inbox so users can manually enter the place name when extraction confidence is low
 - **Trip planning UI** — drag reels from inbox into a trip, day-by-day itinerary view
 - **Shared trips** — invite partner/friends by email, combined inbox per trip
-- **Map view** — pin saved places on an interactive map using lat/lng from Google Places
-- **Deploy** — Vercel for the Next.js app, Railway for the worker
+- **Map view** — pin saved places on an interactive map using Google Places lat/lng
+- **Backfill place IDs** — optionally rerun Google Places resolution for older saved reels that were processed before migration 005

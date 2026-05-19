@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,18 +17,19 @@ interface FormState {
   end_date: string
 }
 
-const EMPTY_FORM: FormState = {
-  name: '',
-  destination_country: '',
-  destination_city: '',
-  destination_region: '',
-  start_date: '',
-  end_date: '',
-}
-
 export default function NewTripPage() {
   const router = useRouter()
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const searchParams = useSearchParams()
+  const prefillCountry = searchParams.get('destination_country') ?? ''
+
+  const [form, setForm] = useState<FormState>({
+    name: '',
+    destination_country: prefillCountry,
+    destination_city: '',
+    destination_region: '',
+    start_date: '',
+    end_date: '',
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

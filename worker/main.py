@@ -100,6 +100,11 @@ def process_job(sb: Client, job: dict) -> None:
 
         resolved = resolve_place({**result, 'place_name': place_name})
 
+        thumbnail_url = (
+            shortcut_metadata.get('thumbnail_url')
+            or extraction_input.get('thumbnail_url')
+        )
+
         update_data = {
             'caption_text': extraction_input.get('caption'),
             'place_name': place_name,
@@ -111,6 +116,8 @@ def process_job(sb: Client, job: dict) -> None:
             'confidence': confidence,
             'status': status,
         }
+        if thumbnail_url:
+            update_data['thumbnail_url'] = thumbnail_url
         if resolved:
             update_data.update({
                 'google_place_id': resolved.get('google_place_id'),

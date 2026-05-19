@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(uipro --help)",
+      "Bash(uipro-cli --help)",
+      "Bash(uipro init *)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"travel lifestyle inspiration inbox mobile magazine cards swipe\" --design-system --persist -p \"We Should Go\")",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"mobile swipe gesture card animation\" --domain ux)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"travel magazine editorial\" --domain typography)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"card grid mobile inbox filter\" --stack shadcn)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"card grid mobile inbox filter\" --stack nextjs)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"travel lifestyle mobile app cards\" --domain color)"
+    ]
+  }
+}
