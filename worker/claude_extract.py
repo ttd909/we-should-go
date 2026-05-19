@@ -9,6 +9,7 @@ Confidence is capped at 0.7 for the fallback path by the caller (main.py).
 """
 import json
 import logging
+import time
 from typing import Optional
 
 import anthropic
@@ -117,11 +118,24 @@ def extract_place(
 
     content.append({'type': 'text', 'text': prompt})
 
-    message = client.messages.create(
-        model='claude-sonnet-4-6',
-        max_tokens=512,
-        messages=[{'role': 'user', 'content': content}],
-    )
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            message = client.messages.create(
+                model='claude-sonnet-4-6',
+                max_tokens=512,
+                messages=[{'role': 'user', 'content': content}],
+            )
+            break
+        except anthropic.APIConnectionError as exc:
+            last_exc = exc
+            if attempt == 2:
+                raise
+            delay = 2 * (attempt + 1)
+            log.warning('Claude connection failed; retrying in %ss: %s', delay, exc)
+            time.sleep(delay)
+    else:
+        raise RuntimeError('Claude request failed') from last_exc
 
     raw = next((b.text for b in message.content if b.type == 'text'), '')
     parsed: dict = json.loads(raw)

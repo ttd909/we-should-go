@@ -2,7 +2,7 @@
 Reel content extraction.
 
 Primary path (both platforms): yt_dlp Python API → frames + whisper transcript.
-Fallback path (Instagram only):  OG meta scraping → thumbnail + caption.
+Fallback path: TikTok oEmbed or Open Graph meta scraping → thumbnail + caption.
 
 Using the yt_dlp Python API (not subprocess) avoids PATH issues on Windows.
 ffmpeg is used for frame extraction but degrades gracefully if not installed.
@@ -13,6 +13,7 @@ import logging
 import os
 import subprocess
 import tempfile
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from typing import Optional
 
@@ -26,8 +27,8 @@ BROWSER_UA = (
     'Version/17.0 Mobile/15E148 Safari/604.1'
 )
 
-# yt-dlp error message substrings that mean fall back rather than hard-fail
-INSTAGRAM_SOFT_ERRORS = (
+# yt-dlp error message substrings that mean fall back rather than hard-fail.
+SOFT_YTDLP_ERRORS = (
     'login required',
     'login_required',
     'rate-limit',
@@ -35,6 +36,7 @@ INSTAGRAM_SOFT_ERRORS = (
     'ratelimit',
     'not available',
     'this content',
+    'status code 0',
     'private',
     'forbidden',
     '403',
@@ -42,6 +44,13 @@ INSTAGRAM_SOFT_ERRORS = (
 )
 
 _whisper_model = None
+
+
+@dataclass
+class FallbackMetadata:
+    caption: Optional[str]
+    author: Optional[str]
+    thumbnail_url: Optional[str]
 
 
 def _get_whisper():
@@ -64,23 +73,79 @@ def extract_reel(url: str, platform: str, shortcut_metadata: dict) -> dict:
       thumbnail_url: str | None        (fallback / supplement)
       is_fallback:   bool
     """
-    if platform == 'instagram':
-        return _extract_instagram(url, shortcut_metadata)
-    else:
-        return _ytdlp_extract(url)
+    return _extract_with_fallback(url, shortcut_metadata, platform)
 
 
-# ─── Instagram ───────────────────────────────────────────────
+# ─── platform fallback wrapper ───────────────────────────────
 
-def _extract_instagram(url: str, shortcut_metadata: dict) -> dict:
+def _extract_with_fallback(url: str, shortcut_metadata: dict, platform: str) -> dict:
     try:
         return _ytdlp_extract(url)
     except RuntimeError as exc:
         err = str(exc).lower()
-        if any(s in err for s in INSTAGRAM_SOFT_ERRORS) or 'timeout' in err:
-            log.warning('yt-dlp soft failure — falling back to OG scraping: %s', exc)
-            return _og_scrape(url, shortcut_metadata)
+        if any(s in err for s in SOFT_YTDLP_ERRORS) or 'timeout' in err:
+            log.warning('%s yt-dlp soft failure — falling back to metadata: %s', platform, exc)
+            return _metadata_fallback(url, shortcut_metadata, platform)
         raise
+
+
+# ─── metadata fallback ───────────────────────────────────────
+
+def _metadata_fallback(url: str, shortcut_metadata: dict, platform: str) -> dict:
+    if platform == 'tiktok':
+        metadata = _tiktok_oembed(url)
+        if metadata:
+            return _fallback_payload(metadata, platform)
+        log.warning('TikTok oEmbed unavailable — falling back to OG scraping')
+
+    return _og_scrape(url, shortcut_metadata, platform)
+
+
+def _fallback_payload(metadata: FallbackMetadata, platform: str) -> dict:
+    return {
+        'frames': None,
+        'transcript': None,
+        'caption': metadata.caption,
+        'author': metadata.author,
+        'thumbnail_url': metadata.thumbnail_url,
+        'source_platform': platform,
+        'is_fallback': True,
+    }
+
+
+def _resolve_redirect(url: str) -> str:
+    try:
+        resp = requests.head(
+            url,
+            headers={'User-Agent': BROWSER_UA},
+            timeout=10,
+            allow_redirects=True,
+        )
+        return resp.url or url
+    except Exception as exc:
+        log.warning('Redirect resolution failed: %s', exc)
+        return url
+
+
+def _tiktok_oembed(url: str) -> Optional[FallbackMetadata]:
+    canonical = _resolve_redirect(url)
+    try:
+        resp = requests.get(
+            'https://www.tiktok.com/oembed',
+            params={'url': canonical},
+            headers={'User-Agent': BROWSER_UA},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return FallbackMetadata(
+            caption=data.get('title'),
+            author=data.get('author_name'),
+            thumbnail_url=data.get('thumbnail_url'),
+        )
+    except Exception as exc:
+        log.warning('TikTok oEmbed failed: %s', exc)
+        return None
 
 
 # ─── yt-dlp primary path (Python API, no subprocess) ─────────
@@ -179,7 +244,7 @@ def _transcribe(video_path: str) -> Optional[str]:
         return None
 
 
-# ─── Instagram OG scraping fallback ──────────────────────────
+# ─── OG scraping fallback ────────────────────────────────────
 
 class _OGParser(HTMLParser):
     def __init__(self):
@@ -195,8 +260,8 @@ class _OGParser(HTMLParser):
             self.og[prop] = d['content']
 
 
-def _og_scrape(url: str, shortcut_metadata: dict) -> dict:
-    """Parse Open Graph tags from the Instagram page. Falls back to shortcut metadata."""
+def _og_scrape(url: str, shortcut_metadata: dict, platform: str) -> dict:
+    """Parse Open Graph tags from the page. Falls back to shortcut metadata."""
     og: dict[str, str] = {}
     try:
         resp = requests.get(url, headers={'User-Agent': BROWSER_UA}, timeout=15)
@@ -215,5 +280,6 @@ def _og_scrape(url: str, shortcut_metadata: dict) -> dict:
         'caption': og.get('og:description') or meta.get('page_description'),
         'author': og.get('og:title') or meta.get('page_title'),
         'thumbnail_url': og.get('og:image') or meta.get('thumbnail_url'),
+        'source_platform': platform,
         'is_fallback': True,
     }
