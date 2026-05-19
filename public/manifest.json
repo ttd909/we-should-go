@@ -1,0 +1,24 @@
+{
+  "name": "We Should Go",
+  "short_name": "We Should Go",
+  "description": "Save travel reels and plan trips",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/globe.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "share_target": {
+    "action": "/api/share-target",
+    "method": "POST",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "url": "url"
+    }
+  }
+}
