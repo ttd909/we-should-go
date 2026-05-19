@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -17,7 +18,7 @@ interface FormState {
   end_date: string
 }
 
-export default function NewTripPage() {
+function NewTripForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const prefillCountry = searchParams.get('destination_country') ?? ''
@@ -169,5 +170,19 @@ export default function NewTripPage() {
         </div>
       </form>
     </main>
+  )
+}
+
+export default function NewTripPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="max-w-lg mx-auto px-4 py-8">
+          <h1 className="text-2xl font-semibold tracking-tight mb-6">New trip</h1>
+        </main>
+      }
+    >
+      <NewTripForm />
+    </Suspense>
   )
 }
