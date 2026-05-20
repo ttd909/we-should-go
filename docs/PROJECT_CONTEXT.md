@@ -4,45 +4,92 @@ Last updated: 2026-05-20
 
 ## App Vision
 
-We Should Go is a private travel reel inbox and itinerary planner.
+We Should Go is a private/shared travel inspiration app built around Dreamlists.
 
-The core use case is saving TikTok and Instagram travel reels sent by my wife and friends before trips exist. The global inbox is the primary product surface. Trips form on top of that inbox later, once there is enough saved inspiration to plan around.
+A Dreamlist is the shared or personal place where travel Ideas live. Users save TikTok and Instagram reels as Ideas, keep future trip inspiration together, and later turn those Ideas into Trips and itinerary plans.
 
-The product principle is:
+The core emotional idea is:
 
-- Capture should be effortless.
-- Organisation should be optional.
-- Planning should happen later.
+- Save places you dream of visiting one day.
+- Keep capture effortless.
+- Keep organisation optional.
+- Let planning happen later.
 
-The home screen should stay simple: a paste box plus a recent saves feed. The app should feel like a lightweight shared travel memory/inspiration inbox, not a complex dashboard.
+The app should feel like a polished mobile travel inspiration app, not an admin dashboard.
 
-## Final Product Decisions
+## Current Product Language
 
-- No Collections in v1.
-- Use tags instead of Collections.
-- `submittedBy` / `submitted_by_label` is metadata, not a bucket.
-- Reels have an optional `tripId` / `trip_id`.
-- Trips can start as `idea`, then move to `planning`, `booked`, or `completed`.
-- Reel statuses are conceptually `inbox`, `saved`, `scheduled`, and `rejected`.
-- Current code also uses `needs_review` to surface low-confidence extraction results.
-- Use structured destination fields, not only tags.
-- Add priority/favourite for important reels.
-- Home screen should be simple: paste box plus recent saves feed.
+- App name: We Should Go.
+- Shared/personal container: Dreamlist.
+- Saved reels/place saves: Ideas.
+- A reel is an Idea inside a Dreamlist.
+- A Trip belongs to a Dreamlist.
+- Do not use “Inbox”, “Board”, or “Workspace” in visible UI.
+- The database can still use `reel_submissions` and status value `inbox` internally when safer.
 
-## Data Model Decisions
+Example copy:
 
-### Reel
+- “My Dreamlist”
+- “Thien & Susan’s Dreamlist”
+- “Save a new idea”
+- “Copy to Dreamlist”
+- “Invite someone to this Dreamlist”
+
+## Current Architecture
+
+### App
+
+- Next.js 16 app hosted on Vercel.
+- Production app URL: `https://weshouldgo.app`.
+- Supabase auth and database.
+- Railway Python worker handles reel extraction.
+- Vercel app and Railway worker communicate through Supabase:
+
+`Vercel app -> extraction_jobs row -> Railway worker -> reel_submissions update -> Vercel app reads updated Idea`
+
+### Auth
+
+- Login uses Supabase email magic links.
+- Auth callback route is `/auth/callback`.
+- Magic-link redirects should use `NEXT_PUBLIC_SITE_URL`, currently intended as:
+
+`https://weshouldgo.app/auth/callback`
+
+- Supabase Auth settings must allow `https://weshouldgo.app/auth/callback`.
+
+### Dreamlists
+
+Implemented additively in `supabase/migrations/008_dreamlists.sql`.
+
+Tables:
+
+- `dreamlists`
+- `dreamlist_members`
+- `dreamlist_invites`
+
+Rules:
+
+- A user can belong to many Dreamlists.
+- A Dreamlist has many members.
+- A Dreamlist has many Ideas/ReelSubmissions.
+- A Dreamlist has many Trips.
+- Every new profile automatically gets a personal `My Dreamlist`.
+- Access is scoped by Dreamlist membership.
+- Dreamlist-level sharing only for v1.
+
+### Ideas / Reels
 
 Implemented as `reel_submissions`.
 
-Fields currently used or agreed:
+Important fields:
 
 - `id`
+- `dreamlist_id`
 - `submitted_by_user_id`
 - `submitted_by_label`
-- `platform`: `instagram`, `tiktok`, or `other`
+- `platform`
 - `url`
-- `url_hash` for per-user deduplication
+- `url_hash`
 - `caption_text`
 - `notes`
 - `place_name`
@@ -54,133 +101,100 @@ Fields currently used or agreed:
 - `destination_city`
 - `destination_country`
 - `destination_region`
-- `place_type`: `cafe`, `hotel`, `restaurant`, `viewpoint`, `experience`, or `other`
+- `place_type`
 - `tags`
 - `is_favourite`
+- `priority`
 - `confidence`
 - `trip_id`
-- `status`: `inbox`, `saved`, `scheduled`, `rejected`, plus current `needs_review`
+- `status`
 - `thumbnail_url`
+- `source_idea_id`
+- `copied_from_dreamlist_id`
+- `copied_by_user_id`
 - `created_at`
+- `updated_at`
 
-### Trip
+Notes:
+
+- UI calls saved reels “Ideas”.
+- Status `inbox` may remain as an internal DB value.
+- iOS Shortcut currently saves to the user’s personal `My Dreamlist` by default.
+- In-app paste box saves to the currently selected Dreamlist.
+- Ideas can be copied to another Dreamlist the current user belongs to without moving/removing the original.
+
+### Trips
 
 Implemented as `trips`.
 
-Fields currently used or agreed:
+Important fields:
 
 - `id`
+- `dreamlist_id`
 - `name`
 - `destination_city`
 - `destination_country`
 - `destination_region`
 - `start_date`
 - `end_date`
-- `status`: `idea`, `planning`, `booked`, or `completed`
+- `status`
 - `created_by_user_id`
 - `created_at`
+- `updated_at`
 
-### ItineraryItem
+Trip planning UI is still basic.
 
-Not fully implemented as a dedicated table yet.
+## What Has Been Built
 
-Current representation:
+### Core App
 
-- `trip_days.scheduled_items` stores an ordered array of `reel_submission` IDs.
-
-Future likely model:
-
-- `id`
-- `trip_id`
-- `trip_day_id` or date
-- `reel_submission_id`
-- `title`
-- `location`
-- `start_at`
-- `end_at`
-- `notes`
-- `sort_order`
-
-### FixedAnchor
-
-Implemented as `trip_anchors`.
-
-Used for fixed bookings or immovable trip commitments.
-
-Fields currently used:
-
-- `id`
-- `trip_id`
-- `type`: `flight`, `hotel`, `event`, or `reservation`
-- `title`
-- `start_at`
-- `end_at`
-- `location`
-- `notes`
-- `created_at`
-
-### User / Member
-
-Users are Supabase auth users with a `profiles` row.
-
-`profiles` fields:
-
-- `id`
-- `email`
-- `display_name`
-- `personal_api_token`
-- `created_at`
-
-Trip sharing is scaffolded through `trip_members`.
-
-`trip_members` fields:
-
-- `trip_id`
-- `user_id`
-
-## What Has Already Been Built
-
-### App
-
-- Next.js 16 app.
-- Supabase auth and database.
-- Login page with email magic link.
+- Email magic-link login.
 - Auth callback route.
-- Middleware/proxy protecting page routes.
-- API routes bypass login redirects so API callers get JSON errors.
-- Global inbox page.
-- URL paste input for TikTok/Instagram reels.
-- Inbox feed with cards.
+- Middleware/proxy protects page routes.
+- API routes bypass browser login redirects.
+- Ideas page with paste box and Idea feed.
+- Dreamlist switcher.
+- Mobile bottom navigation: Ideas, Trips, Dreamlists, Settings.
+- Mobile Dreamlist selector below header.
+- Polished single-column mobile Idea card layout.
+- Desktop horizontal nav preserved.
 - Grouped country view and flat view toggle.
 - Filter chips.
 - Stats strip.
 - Soft reject / unreject.
+- Permanent delete through card action menu.
 - Favourite toggle.
 - Needs-review section with inline manual place-name resolution.
-- Detail drawer for saved places.
+- Detail drawer for saved Ideas.
 - Google Maps link support.
-- Google Places photo fallback through a server-side Vercel proxy.
-- Settings page showing personal API token.
+- Google Places photo fallback through `/api/place-photo`.
+- Settings page with personal API token.
 - Token copy and regenerate UI.
-- Basic trips list and new trip form.
-- New trip form can prefill `destination_country` from query params.
+- Dreamlists page.
+- Create shared Dreamlist.
+- Copy invite link.
+- `/join/[token]` flow.
+- Basic Trips list and new Trip form scoped to Dreamlist.
 - PWA manifest and Android share target route.
+- Custom app icon assets in `public/icons`.
 
 ### APIs
 
 - `POST /api/ingest-reel`
   - Accepts browser session auth or Bearer token auth.
-  - Used by the web paste box and iOS Shortcut.
+  - Used by web paste box and iOS Shortcut.
   - Validates TikTok/Instagram URLs.
-  - Deduplicates by `url_hash`.
+  - Deduplicates by `url_hash` within a Dreamlist.
   - Creates `reel_submissions`.
   - Creates `extraction_jobs`.
   - Accepts iOS Shortcut URL values as either a string or an array.
+  - Uses provided `dreamlist_id` when present and permitted.
+  - Falls back to user’s personal Dreamlist when no Dreamlist is provided.
 - `POST /api/share-target`
   - Android PWA share target.
+  - Saves to user’s personal Dreamlist.
 - `GET /api/place-photo`
   - Server-side Google Places photo proxy.
-  - Keeps `GOOGLE_PLACES_API_KEY` out of the browser.
 
 ### Railway Worker
 
@@ -203,7 +217,7 @@ It:
 - Saves thumbnail URL when available.
 - Marks extraction jobs as completed or failed.
 
-### Database / Migrations
+## Database / Migrations
 
 Existing migrations:
 
@@ -214,27 +228,21 @@ Existing migrations:
 - `005_google_place_id.sql`
 - `006_thumbnail_url.sql`
 - `007_google_photo_name.sql`
+- `008_dreamlists.sql`
 
-Important manual production steps:
+Important:
 
-- Run migrations in Supabase SQL Editor when not using Supabase CLI.
-- `005_google_place_id.sql`, `006_thumbnail_url.sql`, and `007_google_photo_name.sql` are especially important for current worker/UI behavior.
+- Run migrations manually in Supabase SQL Editor when not using Supabase CLI.
+- `008_dreamlists.sql` is required for the current app.
+- The example seed file `supabase/seed_dreamlists_example.sql` is optional and must be edited to use real signed-up user emails before running.
 
-### Deployments
-
-- Vercel hosts the Next.js app.
-- Railway hosts the Python worker.
-- Vercel and Railway do not call each other directly.
-- They communicate through Supabase:
-
-`Vercel app -> extraction_jobs row -> Railway worker -> reel_submissions update -> Vercel app reads updated reel`
-
-### Environment Variables
+## Environment Variables
 
 Vercel:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SITE_URL=https://weshouldgo.app`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GOOGLE_PLACES_API_KEY`
 
@@ -252,48 +260,39 @@ Local only:
 
 Do not commit real env files.
 
+## Current Performance Notes
+
+Recently improved:
+
+- Global nav no longer fetches Supabase Dreamlists.
+- Dreamlist switcher now lives on pages that already load Dreamlists.
+- Ideas/Trips navigation preserves the `dreamlist` query parameter.
+- Header is less server-dependent.
+
+If navigation still feels slow, next likely optimisations:
+
+- Add lightweight route-level loading states.
+- Reduce page queries further.
+- Consider client-side cached Dreamlist membership state.
+- Inspect Vercel function timing and Supabase query timing before upgrading Vercel.
+
 ## What Is Incomplete Or Broken
 
 - Instagram thumbnails can still be unreliable.
-  - Current order is social thumbnail, Google Places photo, gradient fallback.
-  - Some older reels may not have `google_photo_name` until backfilled.
-- Google Places photo fallback requires:
-  - migration `007_google_photo_name.sql`
-  - `GOOGLE_PLACES_API_KEY` in both Vercel and Railway.
-- Existing older reels may be missing:
+- Older Ideas may be missing:
   - `google_place_id`
   - `google_photo_name`
   - `thumbnail_url`
   - address/lat/lng
 - No automated backfill exists yet.
+- Manual needs-review resolution currently does not re-run Google Places resolution.
 - No dedicated `ItineraryItem` table exists yet.
 - Trip planning UI is still basic.
-- Shared trips are only scaffolded through schema/policies, not fully productized.
-- Needs-review flow is functional but basic.
-- There is no map view yet.
-- iOS Shortcut works after simplifying it to send only URL and Bearer token, but the Shortcut itself should be documented/cleaned up after more real testing.
+- No map view yet.
+- No in-app notifications.
+- No in-app messaging.
+- No Collections.
 - Google API cost should be controlled with budget alerts and quotas before wider sharing.
-
-## Tomorrow Start Here
-
-1. Confirm production Supabase has migrations `005`, `006`, and `007` applied.
-2. Confirm Vercel has `GOOGLE_PLACES_API_KEY`.
-3. Confirm Railway has `GOOGLE_PLACES_API_KEY`.
-4. Redeploy Vercel and Railway after the latest commit if auto-deploy did not run.
-5. Test the iOS Shortcut with one TikTok and one Instagram reel.
-6. Check Supabase rows for the new saves:
-   - `thumbnail_url`
-   - `google_place_id`
-   - `google_photo_name`
-   - `address`
-   - `latitude`
-   - `longitude`
-   - `confidence`
-   - `status`
-7. Check Railway logs for extraction failures or Google Places failures.
-8. Decide whether to build a small backfill script for older reels.
-9. Polish the home feed only after confirming the data path is reliable.
-10. Set Google Cloud budget alerts and basic daily quotas for Places Text Search and Place Photo.
 
 ## Do Not Build Yet
 
@@ -302,16 +301,35 @@ Do not commit real env files.
 - No payment features.
 - No complex route optimisation.
 - No TikTok/Instagram browser scraping yet.
-- No overbuilt dashboard.
-- No major itinerary builder until the inbox capture loop is reliable.
 - No social/friend activity feed.
-- No heavy map experience before saved places have reliable coordinates.
+- No trip-level permissions yet.
+- No reel-to-user sharing.
+- No in-app direct messaging.
+- No notifications yet.
+
+## Tomorrow Start Here
+
+1. Confirm Vercel has `NEXT_PUBLIC_SITE_URL=https://weshouldgo.app`.
+2. Confirm Supabase Auth has `https://weshouldgo.app/auth/callback` in allowed redirect URLs.
+3. Test magic-link login from another phone.
+4. Test iOS Shortcut save:
+   - It should save into personal `My Dreamlist`.
+5. Test in-app paste save:
+   - It should save into selected Dreamlist.
+6. Test shared Dreamlist invite flow:
+   - Create shared Dreamlist.
+   - Copy invite link.
+   - Open on second phone.
+   - Log in.
+   - Confirm the second user sees shared Ideas and Trips.
+7. Test Ideas -> Trips navigation speed on mobile after the latest nav optimisation.
+8. If still slow, inspect Vercel/Supabase timings before considering paid Vercel changes.
 
 ## Notes For Next Session
 
-- Keep the global inbox primary.
-- Avoid turning submitters into separate buckets.
-- Avoid over-organising early.
-- Prefer small reliability fixes over new feature surface.
-- If images are still poor, first inspect saved row fields before changing UI.
-- If Railway says a job is done but the UI looks stale, check whether the app has the relevant columns and whether Vercel has redeployed.
+- Keep Dreamlist as the top-level product concept.
+- Keep Ideas as the saved reel/place concept.
+- Keep capture simple.
+- Prefer small reliability/performance fixes over new feature surface.
+- If images are poor, inspect saved row fields before changing UI.
+- If Railway says a job is done but UI looks stale, check migrations, columns, and deployment freshness.
