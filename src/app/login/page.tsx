@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 function LoginForm() {
   const searchParams = useSearchParams()
   const next = searchParams.get('next') ?? '/'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ?? window.location.origin
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -25,7 +26,7 @@ function LoginForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     })
 
