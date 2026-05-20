@@ -1,12 +1,16 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') ?? '/'
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -21,7 +25,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     })
 
@@ -53,7 +57,7 @@ export default function LoginPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">We Should Go</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Your travel inspiration inbox
+            Your travel inspiration Dreamlist
           </p>
         </div>
 
@@ -81,5 +85,26 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center px-4">
+          <div className="w-full max-w-sm space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">We Should Go</h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                Your travel inspiration Dreamlist
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }

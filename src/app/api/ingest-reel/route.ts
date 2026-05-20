@@ -24,6 +24,35 @@ async function getAuthedUserId(request: NextRequest): Promise<string | null> {
   return user?.id ?? null
 }
 
+async function getWritableDreamlistId(
+  userId: string,
+  requestedDreamlistId: unknown,
+): Promise<string | null> {
+  const admin = createAdminClient()
+  const requested = typeof requestedDreamlistId === 'string' ? requestedDreamlistId.trim() : ''
+
+  if (requested) {
+    const { data } = await admin
+      .from('dreamlist_members')
+      .select('dreamlist_id')
+      .eq('dreamlist_id', requested)
+      .eq('user_id', userId)
+      .maybeSingle()
+    return data?.dreamlist_id ?? null
+  }
+
+  const { data } = await admin
+    .from('dreamlists')
+    .select('id')
+    .eq('owner_id', userId)
+    .eq('type', 'personal')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  return data?.id ?? null
+}
+
 function coerceShortcutString(value: unknown): string | null {
   if (typeof value === 'string') return value
   if (Array.isArray(value)) {
@@ -43,6 +72,7 @@ export async function POST(request: NextRequest) {
     url?: unknown
     notes?: unknown
     submitted_by_label?: unknown
+    dreamlist_id?: unknown
     page_title?: unknown
     page_description?: unknown
     thumbnail_url?: unknown
@@ -83,12 +113,19 @@ export async function POST(request: NextRequest) {
   const labelStr = typeof submitted_by_label === 'string' ? submitted_by_label.trim() || null : null
 
   const admin = createAdminClient()
+  const dreamlistId = await getWritableDreamlistId(userId, body.dreamlist_id)
+  if (!dreamlistId) {
+    return NextResponse.json(
+      { error: 'You can only save ideas to Dreamlists you belong to' },
+      { status: 403 },
+    )
+  }
 
   // URL hash cache — return existing submission without creating a new job
   const { data: existing } = await admin
     .from('reel_submissions')
     .select('*')
-    .eq('submitted_by_user_id', userId)
+    .eq('dreamlist_id', dreamlistId)
     .eq('url_hash', urlHash)
     .maybeSingle()
 
@@ -100,6 +137,7 @@ export async function POST(request: NextRequest) {
   const { data: reel, error: insertError } = await admin
     .from('reel_submissions')
     .insert({
+      dreamlist_id: dreamlistId,
       submitted_by_user_id: userId,
       url: cleanUrl,
       url_hash: urlHash,

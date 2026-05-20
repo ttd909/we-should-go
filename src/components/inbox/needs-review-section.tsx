@@ -36,7 +36,7 @@ function NeedsReviewCard({
   }
 
   const handleDelete = () => {
-    if (window.confirm('Permanently delete this saved place?')) {
+    if (window.confirm('Permanently delete this idea?')) {
       onDelete()
     }
   }
@@ -87,7 +87,7 @@ function NeedsReviewCard({
                 'text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               )}
-              aria-label="Permanently delete saved place"
+              aria-label="Permanently delete idea"
             >
               <Trash2 className="size-3.5" />
             </button>

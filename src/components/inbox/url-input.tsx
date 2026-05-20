@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-export function UrlInput() {
+export function UrlInput({ dreamlistId }: { dreamlistId: string }) {
   const router = useRouter()
   const [url, setUrl] = useState('')
   const [notes, setNotes] = useState('')
@@ -33,6 +33,7 @@ export function UrlInput() {
         body: JSON.stringify({
           url: url.trim(),
           notes: notes.trim() || undefined,
+          dreamlist_id: dreamlistId,
         }),
       })
 
@@ -47,7 +48,7 @@ export function UrlInput() {
         setStatus('error')
       }
     } catch {
-      setErrorMsg('Network error — check your connection')
+      setErrorMsg('Network error - check your connection')
       setStatus('error')
     } finally {
       setLoading(false)
@@ -61,7 +62,7 @@ export function UrlInput() {
     >
       <Input
         type="url"
-        placeholder="Paste a TikTok or Instagram reel URL…"
+        placeholder="Paste a TikTok or Instagram reel"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         required
@@ -75,11 +76,11 @@ export function UrlInput() {
           className="h-10 bg-white/90 text-sm shadow-inner shadow-sky-950/[0.03]"
         />
         <Button type="submit" disabled={loading} className="h-10 shrink-0 bg-sky-600 px-4 shadow-sm hover:bg-sky-700">
-          {loading ? 'Saving…' : 'Save'}
+          {loading ? 'Saving...' : 'Save idea'}
         </Button>
       </div>
       {status === 'saved' && (
-        <p className="text-xs text-muted-foreground">Saved. The card will update automatically.</p>
+        <p className="text-xs text-muted-foreground">Saved to this Dreamlist. The idea will update automatically.</p>
       )}
       {status === 'error' && (
         <p className="text-xs text-destructive">{errorMsg}</p>

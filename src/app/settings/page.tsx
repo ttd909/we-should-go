@@ -22,7 +22,7 @@ export default async function SettingsPage() {
           <h2 className="text-base font-medium">Personal API token</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Use this token in the iOS Shortcut to save reels directly from TikTok or Instagram
-            without opening the app. Treat it like a password — it grants full access to your inbox.
+            without opening the app. Treat it like a password — it grants access to your Dreamlists.
           </p>
         </div>
 

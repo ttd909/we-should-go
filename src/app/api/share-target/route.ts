@@ -39,12 +39,24 @@ export async function POST(request: NextRequest) {
 
   const urlHash = crypto.createHash('sha256').update(cleanUrl).digest('hex')
   const admin = createAdminClient()
+  const { data: dreamlist } = await admin
+    .from('dreamlists')
+    .select('id')
+    .eq('owner_id', user.id)
+    .eq('type', 'personal')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (!dreamlist?.id) {
+    return NextResponse.redirect(new URL('/?error=no-dreamlist', request.url))
+  }
 
   // Deduplicate — if the user already has this reel, skip insertion
   const { data: existing } = await admin
     .from('reel_submissions')
     .select('id')
-    .eq('submitted_by_user_id', user.id)
+    .eq('dreamlist_id', dreamlist.id)
     .eq('url_hash', urlHash)
     .maybeSingle()
 
@@ -52,6 +64,7 @@ export async function POST(request: NextRequest) {
     const { data: reel } = await admin
       .from('reel_submissions')
       .insert({
+        dreamlist_id: dreamlist.id,
         submitted_by_user_id: user.id,
         url: cleanUrl,
         url_hash: urlHash,

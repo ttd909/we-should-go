@@ -3,19 +3,34 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { buttonVariants } from '@/components/ui/button'
 import { TripCard } from '@/components/trips/trip-card'
-import type { Trip } from '@/lib/types'
+import type { Dreamlist, Trip } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
-export default async function TripsPage() {
+export default async function TripsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ dreamlist?: string }>
+}) {
+  const params = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const { data: dreamlistsData } = await supabase
+    .from('dreamlists')
+    .select('*')
+    .order('created_at', { ascending: true })
+
+  const dreamlists = (dreamlistsData ?? []) as Dreamlist[]
+  if (dreamlists.length === 0) redirect('/dreamlists')
+  const selectedDreamlist =
+    dreamlists.find((dreamlist) => dreamlist.id === params?.dreamlist) ?? dreamlists[0]
+
   const { data: trips, error: tripsError } = await supabase
     .from('trips')
     .select('*')
-    .eq('created_by_user_id', user.id)
+    .eq('dreamlist_id', selectedDreamlist.id)
     .order('created_at', { ascending: false })
 
   if (tripsError) console.error('[trips] query error:', tripsError.message, tripsError.code, tripsError.details, tripsError.hint)
@@ -24,10 +39,11 @@ export default async function TripsPage() {
     <main className="max-w-2xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Trips</h1>
-        <Link href="/trips/new" className={buttonVariants({ size: 'sm' })}>
+        <Link href={`/trips/new?dreamlist=${selectedDreamlist.id}`} className={buttonVariants({ size: 'sm' })}>
           New trip
         </Link>
       </div>
+      <p className="text-xs font-medium text-sky-700 mb-4">{selectedDreamlist.name}</p>
 
       {trips && trips.length > 0 ? (
         <div className="space-y-3">

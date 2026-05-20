@@ -22,6 +22,7 @@ function NewTripForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const prefillCountry = searchParams.get('destination_country') ?? ''
+  const dreamlistId = searchParams.get('dreamlist')
 
   const [form, setForm] = useState<FormState>({
     name: '',
@@ -66,7 +67,14 @@ function NewTripForm() {
     // A trip without dates starts as 'idea'; add dates and it becomes 'planning'
     const status: TripStatus = form.start_date ? 'planning' : 'idea'
 
+    if (!dreamlistId) {
+      setError('Choose a Dreamlist before creating a trip.')
+      setLoading(false)
+      return
+    }
+
     const { error } = await supabase.from('trips').insert({
+      dreamlist_id: dreamlistId,
       name: form.name,
       destination_city: form.destination_city || null,
       destination_country: form.destination_country || null,
@@ -81,7 +89,7 @@ function NewTripForm() {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push('/trips')
+      router.push(`/trips?dreamlist=${dreamlistId}`)
       router.refresh()
     }
   }

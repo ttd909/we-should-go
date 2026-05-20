@@ -37,7 +37,7 @@ export function DetailDrawer({ reel, open, onOpenChange, onFavourite, onDelete }
 
   const handleDelete = () => {
     if (!onDelete) return
-    if (window.confirm('Permanently delete this saved place?')) {
+    if (window.confirm('Permanently delete this idea?')) {
       onDelete()
       onOpenChange(false)
     }
@@ -133,7 +133,7 @@ export function DetailDrawer({ reel, open, onOpenChange, onFavourite, onDelete }
                         'text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       )}
-                      aria-label="Permanently delete saved place"
+                      aria-label="Permanently delete idea"
                     >
                       <Trash2 className="size-5" />
                     </button>
@@ -158,7 +158,7 @@ export function DetailDrawer({ reel, open, onOpenChange, onFavourite, onDelete }
               {/* Who saved it */}
               {reel.submitted_by_label && (
                 <p className="text-xs text-muted-foreground">
-                  Saved by <span className="font-medium text-foreground">{reel.submitted_by_label}</span>
+                  Added by <span className="font-medium text-foreground">{reel.submitted_by_label}</span>
                 </p>
               )}
 

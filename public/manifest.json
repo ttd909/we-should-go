@@ -1,7 +1,7 @@
 {
   "name": "We Should Go",
   "short_name": "We Should Go",
-  "description": "Save travel reels and plan trips",
+  "description": "Save travel ideas in a shared Dreamlist",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { Star, Trash2 } from 'lucide-react'
+import { MoreVertical, Star, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { countryFlag } from '@/lib/country-flag'
 import { PLACE_TYPE_LABEL, googlePlacePhotoUrl, placeGradient } from './card-utils'
-import type { ReelSubmission } from '@/lib/types'
+import type { Dreamlist, ReelSubmission } from '@/lib/types'
 
 const SWIPE_THRESHOLD = 80
 
@@ -111,12 +111,25 @@ interface PlaceCardProps {
   onReject: () => void
   onFavourite: () => void
   onDelete: () => void
+  onCopy: (targetDreamlistId: string) => void
+  copyTargets: Dreamlist[]
   onOpen: () => void
 }
 
-export function PlaceCard({ reel, index = 0, onReject, onFavourite, onDelete, onOpen }: PlaceCardProps) {
+export function PlaceCard({
+  reel,
+  index = 0,
+  onReject,
+  onFavourite,
+  onDelete,
+  onCopy,
+  copyTargets,
+  onOpen,
+}: PlaceCardProps) {
   const [starPulse, setStarPulse] = useState(false)
   const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [copyOpen, setCopyOpen] = useState(false)
   const clickBlocked = useRef(false)
 
   const handleReject = useCallback(() => {
@@ -137,9 +150,22 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onDelete, on
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
     clickBlocked.current = true
-    if (window.confirm('Permanently delete this saved place?')) {
+    if (window.confirm('Permanently delete this idea?')) {
       onDelete()
     }
+  }
+
+  const handleMenuClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    clickBlocked.current = true
+    setMenuOpen((open) => !open)
+    setCopyOpen(false)
+  }
+
+  const handleCopy = (targetDreamlistId: string) => {
+    onCopy(targetDreamlistId)
+    setMenuOpen(false)
+    setCopyOpen(false)
   }
 
   const isProcessing  = reel.confidence === null
@@ -243,7 +269,7 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onDelete, on
 
           {isNeedsReview && (
             <span
-              className="absolute top-1.5 right-1.5 size-2 rounded-full bg-amber-400 ring-1 ring-white"
+              className="absolute bottom-1.5 right-1.5 size-2 rounded-full bg-amber-400 ring-1 ring-white"
               aria-label="Needs review"
             />
           )}
@@ -259,10 +285,59 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onDelete, on
               'transition-colors hover:bg-red-600',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
             )}
-            aria-label="Permanently delete saved place"
+            aria-label="Permanently delete idea"
           >
             <Trash2 className="size-3.5" />
           </button>
+          <div className="absolute right-1.5 top-1.5">
+            <button
+              type="button"
+              onClick={handleMenuClick}
+              className={cn(
+                'flex items-center justify-center size-8 rounded-full bg-black/45 text-white shadow-sm backdrop-blur',
+                'transition-colors hover:bg-black/65',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
+              )}
+              aria-label="Idea actions"
+              aria-expanded={menuOpen}
+            >
+              <MoreVertical className="size-3.5" />
+            </button>
+            {menuOpen && (
+              <div
+                className="absolute right-0 top-9 z-20 w-44 rounded-lg border border-border bg-background p-1.5 text-xs shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => setCopyOpen((open) => !open)}
+                  className="w-full rounded-md px-2 py-1.5 text-left hover:bg-muted"
+                >
+                  Copy to Dreamlist
+                </button>
+                {copyOpen && (
+                  <div className="mt-1 border-t border-border pt-1">
+                    {copyTargets.length > 0 ? (
+                      copyTargets.map((dreamlist) => (
+                        <button
+                          key={dreamlist.id}
+                          type="button"
+                          onClick={() => handleCopy(dreamlist.id)}
+                          className="w-full rounded-md px-2 py-1.5 text-left hover:bg-muted"
+                        >
+                          {dreamlist.name}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="px-2 py-1.5 text-muted-foreground">
+                        You can only copy ideas to Dreamlists you belong to
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Metadata */}

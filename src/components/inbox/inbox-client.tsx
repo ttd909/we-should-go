@@ -4,14 +4,14 @@ import { useState, useMemo, useOptimistic, useTransition } from 'react'
 import { Collapsible } from '@base-ui/react/collapsible'
 import { ChevronDown, LayoutGrid, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { deleteReel, softRejectReel, unrejectReel, toggleFavourite, resolveNeedsReview } from '@/lib/actions/reels'
+import { copyIdeaToDreamlist, deleteReel, softRejectReel, unrejectReel, toggleFavourite, resolveNeedsReview } from '@/lib/actions/reels'
 import { StatsStrip } from './stats-strip'
 import { FilterChips, type FilterValue } from './filter-chips'
 import { CountryGroup } from './country-group'
 import { NeedsReviewSection } from './needs-review-section'
 import { DetailDrawer } from './detail-drawer'
 import { PlaceCard } from './place-card'
-import type { ReelSubmission, Trip } from '@/lib/types'
+import type { Dreamlist, ReelSubmission, Trip } from '@/lib/types'
 
 type OptimisticAction =
   | { type: 'reject';   id: string }
@@ -25,15 +25,17 @@ type ViewMode = 'grouped' | 'all'
 interface InboxClientProps {
   reels: ReelSubmission[]
   trips: Trip[]
-  userId: string
+  dreamlists: Dreamlist[]
+  currentDreamlist: Dreamlist
 }
 
-export function InboxClient({ reels, trips }: InboxClientProps) {
+export function InboxClient({ reels, trips, dreamlists, currentDreamlist }: InboxClientProps) {
   const [filter, setFilter]             = useState<FilterValue>('all')
   const [viewMode, setViewMode]         = useState<ViewMode>('grouped')
   const [showRejected, setShowRejected] = useState(false)
   const [activeReel, setActiveReel]     = useState<ReelSubmission | null>(null)
   const [drawerOpen, setDrawerOpen]     = useState(false)
+  const [copyMessage, setCopyMessage]   = useState<string | null>(null)
   const [, startTransition]             = useTransition()
 
   const [optimisticReels, dispatch] = useOptimistic(
@@ -159,6 +161,15 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
     })
   }
 
+  const handleCopyToDreamlist = (id: string, targetDreamlistId: string) => {
+    const target = dreamlists.find((dreamlist) => dreamlist.id === targetDreamlistId)
+    startTransition(async () => {
+      await copyIdeaToDreamlist(id, targetDreamlistId)
+      setCopyMessage(target ? `Copied to ${target.name}` : 'Copied to Dreamlist')
+      setTimeout(() => setCopyMessage(null), 3000)
+    })
+  }
+
   const openDetail = (reel: ReelSubmission) => {
     setActiveReel(reel)
     setDrawerOpen(true)
@@ -191,6 +202,12 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
           needsReviewCount={needsReviewReels.length}
           onSelect={handleFilterSelect}
         />
+
+        {copyMessage && (
+          <p className="rounded-lg bg-sky-50 px-3 py-2 text-xs font-medium text-sky-800">
+            {copyMessage}
+          </p>
+        )}
 
         {/* View mode toggle */}
         {mainReels.length > 0 && (
@@ -232,8 +249,8 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
         {isEmpty && (
           <p className="text-sm text-muted-foreground py-4">
             {filter !== 'all'
-              ? 'No places match this filter.'
-              : 'No reels yet. Paste a TikTok or Instagram URL above to save your first one.'}
+              ? 'No ideas match this filter.'
+              : 'No ideas yet. Paste a TikTok or Instagram reel above to save your first one.'}
           </p>
         )}
 
@@ -249,6 +266,9 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
                 onReject={handleReject}
                 onFavourite={(id) => handleFavourite(id)}
                 onDelete={handleDelete}
+                onCopy={handleCopyToDreamlist}
+                copyTargets={dreamlists.filter((dreamlist) => dreamlist.id !== currentDreamlist.id)}
+                currentDreamlistId={currentDreamlist.id}
                 onOpen={openDetail}
               />
             ))}
@@ -266,6 +286,8 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
                 onReject={() => handleReject(reel.id)}
                 onFavourite={() => handleFavourite(reel.id)}
                 onDelete={() => handleDelete(reel.id)}
+                onCopy={(targetDreamlistId) => handleCopyToDreamlist(reel.id, targetDreamlistId)}
+                copyTargets={dreamlists.filter((dreamlist) => dreamlist.id !== currentDreamlist.id)}
                 onOpen={() => openDetail(reel)}
               />
             ))}
@@ -310,6 +332,8 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
                       onReject={() => {}}
                       onFavourite={() => {}}
                       onDelete={() => handleDelete(reel.id)}
+                      onCopy={(targetDreamlistId) => handleCopyToDreamlist(reel.id, targetDreamlistId)}
+                      copyTargets={dreamlists.filter((dreamlist) => dreamlist.id !== currentDreamlist.id)}
                       onOpen={() => openDetail(reel)}
                     />
                     <div className="absolute inset-0 flex items-end justify-center pb-2 pointer-events-none">
@@ -328,7 +352,7 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
                         <button
                           type="button"
                           onClick={() => {
-                            if (window.confirm('Permanently delete this saved place?')) {
+                            if (window.confirm('Permanently delete this idea?')) {
                               handleDelete(reel.id)
                             }
                           }}

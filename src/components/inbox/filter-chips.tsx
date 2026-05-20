@@ -25,7 +25,7 @@ export function FilterChips({ active, submitters, onSelect, needsReviewCount }: 
     <div
       className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none"
       role="group"
-      aria-label="Filter saved places"
+      aria-label="Filter saved ideas"
     >
       {chips.map(chip => (
         <button

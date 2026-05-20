@@ -3,6 +3,9 @@ export type ReelStatus = 'inbox' | 'saved' | 'scheduled' | 'rejected' | 'needs_r
 export type PlaceType = 'cafe' | 'hotel' | 'restaurant' | 'viewpoint' | 'experience' | 'other'
 export type TripStatus = 'idea' | 'planning' | 'booked' | 'completed'
 export type AnchorType = 'flight' | 'hotel' | 'event' | 'reservation'
+export type DreamlistType = 'personal' | 'shared'
+export type DreamlistMemberRole = 'owner' | 'member'
+export type IdeaPriority = 'normal' | 'high'
 
 export interface Profile {
   id: string
@@ -14,10 +17,12 @@ export interface Profile {
 
 export interface ReelSubmission {
   id: string
+  dreamlist_id: string
   submitted_by_user_id: string
   submitted_by_label: string | null
   platform: ReelPlatform
   url: string
+  url_hash?: string | null
   caption_text: string | null
   notes: string | null
   place_name: string | null
@@ -33,14 +38,20 @@ export interface ReelSubmission {
   tags: string[]
   is_favourite: boolean
   confidence: number | null
+  priority: IdeaPriority
   trip_id: string | null
   status: ReelStatus
   thumbnail_url: string | null
+  source_idea_id: string | null
+  copied_from_dreamlist_id: string | null
+  copied_by_user_id: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface Trip {
   id: string
+  dreamlist_id: string
   name: string
   destination_city: string | null
   destination_country: string | null
@@ -50,6 +61,7 @@ export interface Trip {
   status: TripStatus
   created_by_user_id: string
   created_at: string
+  updated_at: string
 }
 
 export interface TripMember {
@@ -74,4 +86,31 @@ export interface TripDay {
   trip_id: string
   date: string
   scheduled_items: string[]
+}
+
+export interface Dreamlist {
+  id: string
+  name: string
+  type: DreamlistType
+  owner_id: string
+  created_at: string
+  updated_at: string
+}
+
+export interface DreamlistMember {
+  id: string
+  dreamlist_id: string
+  user_id: string
+  role: DreamlistMemberRole
+  created_at: string
+}
+
+export interface DreamlistInvite {
+  id: string
+  dreamlist_id: string
+  token: string
+  invited_by_user_id: string
+  expires_at: string | null
+  used_at: string | null
+  created_at: string
 }

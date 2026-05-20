@@ -7,7 +7,7 @@ import { ChevronDown, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { countryFlag } from '@/lib/country-flag'
 import { PlaceCard } from './place-card'
-import type { ReelSubmission, Trip } from '@/lib/types'
+import type { Dreamlist, ReelSubmission, Trip } from '@/lib/types'
 
 const NUDGE_THRESHOLD = 5
 
@@ -18,6 +18,9 @@ interface CountryGroupProps {
   onReject: (id: string) => void
   onFavourite: (id: string) => void
   onDelete: (id: string) => void
+  onCopy: (id: string, targetDreamlistId: string) => void
+  copyTargets: Dreamlist[]
+  currentDreamlistId: string
   onOpen: (reel: ReelSubmission) => void
 }
 
@@ -28,6 +31,9 @@ export function CountryGroup({
   onReject,
   onFavourite,
   onDelete,
+  onCopy,
+  copyTargets,
+  currentDreamlistId,
   onOpen,
 }: CountryGroupProps) {
   const [open, setOpen] = useState(true)
@@ -79,7 +85,7 @@ export function CountryGroup({
                 {reels.length} {country} saves — start a trip?
               </p>
               <Link
-                href={`/trips/new?destination_country=${encodeURIComponent(country)}`}
+                href={`/trips/new?dreamlist=${currentDreamlistId}&destination_country=${encodeURIComponent(country)}`}
                 className={cn(
                   'flex items-center gap-0.5 text-xs font-semibold',
                   'text-amber-700 hover:text-amber-900 transition-colors',
@@ -105,6 +111,8 @@ export function CountryGroup({
                 onReject={() => onReject(reel.id)}
                 onFavourite={() => onFavourite(reel.id)}
                 onDelete={() => onDelete(reel.id)}
+                onCopy={(targetDreamlistId) => onCopy(reel.id, targetDreamlistId)}
+                copyTargets={copyTargets}
                 onOpen={() => onOpen(reel)}
               />
             ))}

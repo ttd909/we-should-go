@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "We Should Go",
-  description: "Your travel inspiration inbox",
+  description: "Your travel inspiration Dreamlist",
   manifest: '/manifest.json',
   icons: {
     icon: [
