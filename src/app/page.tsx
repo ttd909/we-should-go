@@ -47,10 +47,11 @@ export default async function IdeasPage({
   const hasProcessing = reels.some(r => r.confidence === null)
 
   return (
-    <main className="px-4 py-7 sm:py-9">
-      <div className="max-w-2xl mx-auto mb-6">
+    <main className="px-4 py-6 sm:py-9">
+      <div className="max-w-2xl mx-auto mb-7 space-y-1">
         <p className="text-xs font-medium text-sky-700 mb-1">{selectedDreamlist.name}</p>
-        <h1 className="text-2xl font-semibold tracking-tight mb-4 text-[var(--travel-ink)]">Ideas</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--travel-ink)] sm:text-2xl">Ideas</h1>
+        <p className="pb-3 text-sm text-muted-foreground">Save the places you want to dream about later.</p>
         <UrlInput dreamlistId={selectedDreamlist.id} />
       </div>
 

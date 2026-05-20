@@ -45,7 +45,7 @@ export function CountryGroup({
   const showNudge = reels.length >= NUDGE_THRESHOLD && !hasTrip
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-sky-100/80 bg-white/75 shadow-[var(--travel-card-shadow)] backdrop-blur">
+    <div className="overflow-hidden rounded-3xl border border-sky-100/80 bg-white/78 shadow-[var(--travel-card-shadow)] backdrop-blur">
       {/* Header trigger */}
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <div
@@ -56,7 +56,7 @@ export function CountryGroup({
         >
           <Collapsible.Trigger
             className={cn(
-              'w-full flex items-center gap-2 px-4 py-3',
+              'w-full flex items-center gap-2 px-4 py-3.5',
               'cursor-pointer select-none',
               'hover:bg-white/35 transition-colors duration-150',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -102,7 +102,7 @@ export function CountryGroup({
         </div>
 
         <Collapsible.Panel className="collapsible-panel">
-          <div className="p-3 grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
             {reels.map((reel, i) => (
               <PlaceCard
                 key={reel.id}

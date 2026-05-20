@@ -58,7 +58,7 @@ export function UrlInput({ dreamlistId }: { dreamlistId: string }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-2 rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[var(--travel-card-shadow)] backdrop-blur"
+      className="space-y-2 rounded-3xl border border-white/70 bg-white/82 p-3.5 shadow-[var(--travel-card-shadow)] backdrop-blur sm:rounded-2xl"
     >
       <Input
         type="url"
@@ -68,7 +68,7 @@ export function UrlInput({ dreamlistId }: { dreamlistId: string }) {
         required
         className="h-10 bg-white/90 text-sm shadow-inner shadow-sky-950/[0.03]"
       />
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Input
           placeholder='Optional note (e.g. "Susan really wants this")'
           value={notes}

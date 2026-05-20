@@ -186,7 +186,7 @@ export function InboxClient({ reels, trips, dreamlists, currentDreamlist }: Inbo
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-5">
         {/* Stats strip */}
         <StatsStrip
           total={stats.total}
@@ -211,7 +211,7 @@ export function InboxClient({ reels, trips, dreamlists, currentDreamlist }: Inbo
 
         {/* View mode toggle */}
         {mainReels.length > 0 && (
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex items-center justify-end gap-1 opacity-80">
             <button
               type="button"
               onClick={() => setViewMode('grouped')}
@@ -256,7 +256,7 @@ export function InboxClient({ reels, trips, dreamlists, currentDreamlist }: Inbo
 
         {/* ── Grouped view ── */}
         {viewMode === 'grouped' && mainReels.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {countryGroups.map(([country, groupReels]) => (
               <CountryGroup
                 key={country}
@@ -277,7 +277,7 @@ export function InboxClient({ reels, trips, dreamlists, currentDreamlist }: Inbo
 
         {/* ── All (flat) view ── */}
         {viewMode === 'all' && mainReels.length > 0 && (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {mainReels.map((reel, i) => (
               <PlaceCard
                 key={reel.id}
@@ -323,7 +323,7 @@ export function InboxClient({ reels, trips, dreamlists, currentDreamlist }: Inbo
             </Collapsible.Trigger>
 
             <Collapsible.Panel className="collapsible-panel">
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 pt-3 opacity-60">
+              <div className="grid grid-cols-1 gap-4 pt-3 opacity-60 sm:grid-cols-2 lg:grid-cols-3">
                 {rejectedReels.map((reel, i) => (
                   <div key={reel.id} className="relative">
                     <PlaceCard

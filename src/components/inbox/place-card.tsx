@@ -147,11 +147,11 @@ export function PlaceCard({
   const { offset, isDragging, exitDir, onTouchStart, onTouchMove, onTouchEnd, onMouseDown } =
     useSwipeGesture(handleReject, handleFavourite)
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    clickBlocked.current = true
+  const handleDelete = () => {
     if (window.confirm('Permanently delete this idea?')) {
       onDelete()
+      setMenuOpen(false)
+      setCopyOpen(false)
     }
   }
 
@@ -232,7 +232,7 @@ export function PlaceCard({
       {/* Card */}
       <div
         className={cn(
-          'relative bg-card border border-border rounded-xl overflow-hidden shadow-sm',
+          'relative bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
           'hover:shadow-lg hover:border-sky-200 transition-all duration-200 cursor-pointer select-none',
           'animate-in fade-in zoom-in-95 duration-300',
         )}
@@ -276,26 +276,13 @@ export function PlaceCard({
           {isProcessing && (
             <div className="absolute inset-0 bg-muted animate-pulse" />
           )}
-          <button
-            type="button"
-            onClick={handleDelete}
-            className={cn(
-              'absolute left-1.5 top-1.5 flex items-center justify-center',
-              'size-8 rounded-full bg-black/45 text-white shadow-sm backdrop-blur',
-              'transition-colors hover:bg-red-600',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
-            )}
-            aria-label="Permanently delete idea"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
-          <div className="absolute right-1.5 top-1.5">
+          <div className="absolute right-2 top-2">
             <button
               type="button"
               onClick={handleMenuClick}
               className={cn(
-                'flex items-center justify-center size-8 rounded-full bg-black/45 text-white shadow-sm backdrop-blur',
-                'transition-colors hover:bg-black/65',
+                'flex items-center justify-center size-8 rounded-full bg-white/35 text-slate-700 shadow-sm backdrop-blur-md',
+                'opacity-60 transition-all hover:bg-white/85 hover:opacity-100',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
               )}
               aria-label="Idea actions"
@@ -305,7 +292,7 @@ export function PlaceCard({
             </button>
             {menuOpen && (
               <div
-                className="absolute right-0 top-9 z-20 w-44 rounded-lg border border-border bg-background p-1.5 text-xs shadow-lg"
+                className="absolute right-0 top-9 z-20 w-48 rounded-xl border border-sky-100 bg-white/95 p-1.5 text-xs shadow-xl shadow-sky-950/10 backdrop-blur"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
@@ -335,6 +322,14 @@ export function PlaceCard({
                     )}
                   </div>
                 )}
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="mt-1 flex w-full items-center gap-1.5 rounded-md border-t border-border px-2 py-1.5 text-left text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="size-3" />
+                  Delete idea
+                </button>
               </div>
             )}
           </div>
@@ -362,7 +357,7 @@ export function PlaceCard({
               className={cn(
                 'flex items-center justify-center -m-1 p-1 rounded-md',
                 'min-w-[44px] min-h-[44px] shrink-0',
-                'hover:bg-muted/60 transition-colors',
+                'opacity-75 hover:bg-muted/60 hover:opacity-100 transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               )}
               aria-label={reel.is_favourite ? 'Remove from favourites' : 'Add to favourites'}
