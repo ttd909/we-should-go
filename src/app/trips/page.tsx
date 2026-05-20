@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { buttonVariants } from '@/components/ui/button'
 import { TripCard } from '@/components/trips/trip-card'
+import { DreamlistSwitcher } from '@/components/dreamlists/dreamlist-switcher'
 import type { Dreamlist, Trip } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -37,13 +38,20 @@ export default async function TripsPage({
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-5 md:hidden">
+        <DreamlistSwitcher dreamlists={dreamlists} variant="mobile" />
+      </div>
+      <div className="flex items-center justify-between mb-3 gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Trips</h1>
         <Link href={`/trips/new?dreamlist=${selectedDreamlist.id}`} className={buttonVariants({ size: 'sm' })}>
           New trip
         </Link>
       </div>
-      <p className="text-xs font-medium text-sky-700 mb-4">{selectedDreamlist.name}</p>
+      <div className="mb-4 hidden items-center justify-between gap-3 md:flex">
+        <p className="text-xs font-medium text-sky-700">{selectedDreamlist.name}</p>
+        <DreamlistSwitcher dreamlists={dreamlists} />
+      </div>
+      <p className="text-xs font-medium text-sky-700 mb-4 md:hidden">{selectedDreamlist.name}</p>
 
       {trips && trips.length > 0 ? (
         <div className="space-y-3">

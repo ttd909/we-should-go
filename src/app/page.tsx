@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { UrlInput } from '@/components/inbox/url-input'
 import { InboxClient } from '@/components/inbox/inbox-client'
 import { InboxPoller } from '@/components/inbox/inbox-poller'
+import { DreamlistSwitcher } from '@/components/dreamlists/dreamlist-switcher'
 import type { Dreamlist, ReelSubmission, Trip } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -48,8 +49,15 @@ export default async function IdeasPage({
 
   return (
     <main className="px-4 py-6 sm:py-9">
+      <div className="mx-auto mb-5 max-w-2xl md:hidden">
+        <DreamlistSwitcher dreamlists={dreamlists} variant="mobile" />
+      </div>
       <div className="max-w-2xl mx-auto mb-7 space-y-1">
-        <p className="text-xs font-medium text-sky-700 mb-1">{selectedDreamlist.name}</p>
+        <div className="mb-1 hidden items-center justify-between gap-3 md:flex">
+          <p className="text-xs font-medium text-sky-700">{selectedDreamlist.name}</p>
+          <DreamlistSwitcher dreamlists={dreamlists} />
+        </div>
+        <p className="text-xs font-medium text-sky-700 mb-1 md:hidden">{selectedDreamlist.name}</p>
         <h1 className="text-3xl font-semibold tracking-tight text-[var(--travel-ink)] sm:text-2xl">Ideas</h1>
         <p className="pb-3 text-sm text-muted-foreground">Save the places you want to dream about later.</p>
         <UrlInput dreamlistId={selectedDreamlist.id} />
