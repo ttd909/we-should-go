@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
-export async function rejectReel(reelId: string) {
+export async function deleteReel(reelId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
@@ -16,6 +16,8 @@ export async function rejectReel(reelId: string) {
 
   revalidatePath('/')
 }
+
+export const rejectReel = deleteReel
 
 export async function softRejectReel(reelId: string) {
   const supabase = await createClient()

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { Collapsible } from '@base-ui/react/collapsible'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { googlePlacePhotoUrl, placeGradient } from './card-utils'
 import type { ReelSubmission } from '@/lib/types'
@@ -11,14 +11,17 @@ import type { ReelSubmission } from '@/lib/types'
 interface NeedsReviewSectionProps {
   reels: ReelSubmission[]
   onResolve: (id: string, placeName: string) => void
+  onDelete: (id: string) => void
 }
 
 function NeedsReviewCard({
   reel,
   onResolve,
+  onDelete,
 }: {
   reel: ReelSubmission
   onResolve: (placeName: string) => void
+  onDelete: () => void
 }) {
   const [input, setInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -30,6 +33,12 @@ function NeedsReviewCard({
     if (!trimmed) return
     setSubmitting(true)
     onResolve(trimmed)
+  }
+
+  const handleDelete = () => {
+    if (window.confirm('Permanently delete this saved place?')) {
+      onDelete()
+    }
   }
 
   const destination = [reel.destination_city, reel.destination_country]
@@ -66,9 +75,23 @@ function NeedsReviewCard({
       <div className="flex-1 min-w-0 space-y-2">
         {/* Meta */}
         <div>
-          {destination && (
-            <p className="text-xs text-muted-foreground">{destination}</p>
-          )}
+          <div className="flex items-start justify-between gap-2">
+            {destination && (
+              <p className="text-xs text-muted-foreground">{destination}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleDelete}
+              className={cn(
+                'flex items-center justify-center size-7 rounded-md -mt-1 -mr-1',
+                'text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              )}
+              aria-label="Permanently delete saved place"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
           {reel.notes && (
             <p className="text-xs text-muted-foreground italic line-clamp-1">
               &ldquo;{reel.notes}&rdquo;
@@ -118,7 +141,7 @@ function NeedsReviewCard({
   )
 }
 
-export function NeedsReviewSection({ reels, onResolve }: NeedsReviewSectionProps) {
+export function NeedsReviewSection({ reels, onResolve, onDelete }: NeedsReviewSectionProps) {
   const [open, setOpen] = useState(false)
 
   if (reels.length === 0) return null
@@ -158,6 +181,7 @@ export function NeedsReviewSection({ reels, onResolve }: NeedsReviewSectionProps
               key={reel.id}
               reel={reel}
               onResolve={(placeName) => onResolve(reel.id, placeName)}
+              onDelete={() => onDelete(reel.id)}
             />
           ))}
         </div>

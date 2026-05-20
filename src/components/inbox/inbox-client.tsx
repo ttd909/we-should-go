@@ -4,7 +4,7 @@ import { useState, useMemo, useOptimistic, useTransition } from 'react'
 import { Collapsible } from '@base-ui/react/collapsible'
 import { ChevronDown, LayoutGrid, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { softRejectReel, unrejectReel, toggleFavourite, resolveNeedsReview } from '@/lib/actions/reels'
+import { deleteReel, softRejectReel, unrejectReel, toggleFavourite, resolveNeedsReview } from '@/lib/actions/reels'
 import { StatsStrip } from './stats-strip'
 import { FilterChips, type FilterValue } from './filter-chips'
 import { CountryGroup } from './country-group'
@@ -16,6 +16,7 @@ import type { ReelSubmission, Trip } from '@/lib/types'
 type OptimisticAction =
   | { type: 'reject';   id: string }
   | { type: 'unreject'; id: string }
+  | { type: 'delete';   id: string }
   | { type: 'favourite'; id: string }
   | { type: 'resolve';  id: string; placeName: string }
 
@@ -47,6 +48,8 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
           return state.map(r =>
             r.id === action.id ? { ...r, status: 'inbox' as const } : r,
           )
+        case 'delete':
+          return state.filter(r => r.id !== action.id)
         case 'favourite':
           return state.map(r =>
             r.id === action.id ? { ...r, is_favourite: !r.is_favourite } : r,
@@ -122,6 +125,17 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
     startTransition(async () => {
       dispatch({ type: 'unreject', id })
       await unrejectReel(id)
+    })
+  }
+
+  const handleDelete = (id: string) => {
+    startTransition(async () => {
+      dispatch({ type: 'delete', id })
+      if (activeReel?.id === id) {
+        setDrawerOpen(false)
+        setActiveReel(null)
+      }
+      await deleteReel(id)
     })
   }
 
@@ -234,6 +248,7 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
                 trips={trips}
                 onReject={handleReject}
                 onFavourite={(id) => handleFavourite(id)}
+                onDelete={handleDelete}
                 onOpen={openDetail}
               />
             ))}
@@ -250,6 +265,7 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
                 index={i}
                 onReject={() => handleReject(reel.id)}
                 onFavourite={() => handleFavourite(reel.id)}
+                onDelete={() => handleDelete(reel.id)}
                 onOpen={() => openDetail(reel)}
               />
             ))}
@@ -261,6 +277,7 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
           <NeedsReviewSection
             reels={needsReviewReels}
             onResolve={handleResolve}
+            onDelete={handleDelete}
           />
         )}
 
@@ -292,20 +309,38 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
                       index={i}
                       onReject={() => {}}
                       onFavourite={() => {}}
+                      onDelete={() => handleDelete(reel.id)}
                       onOpen={() => openDetail(reel)}
                     />
                     <div className="absolute inset-0 flex items-end justify-center pb-2 pointer-events-none">
-                      <button
-                        type="button"
-                        onClick={() => handleUnreject(reel.id)}
-                        className={cn(
-                          'pointer-events-auto text-[10px] font-medium',
-                          'bg-background/90 border border-border rounded-full px-2.5 py-1',
-                          'hover:bg-muted transition-colors',
-                        )}
-                      >
-                        Undo reject
-                      </button>
+                      <div className="pointer-events-auto flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleUnreject(reel.id)}
+                          className={cn(
+                            'text-[10px] font-medium',
+                            'bg-background/90 border border-border rounded-full px-2.5 py-1',
+                            'hover:bg-muted transition-colors',
+                          )}
+                        >
+                          Undo reject
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm('Permanently delete this saved place?')) {
+                              handleDelete(reel.id)
+                            }
+                          }}
+                          className={cn(
+                            'text-[10px] font-medium',
+                            'bg-red-50/95 border border-red-100 text-red-600 rounded-full px-2.5 py-1',
+                            'hover:bg-red-100 transition-colors',
+                          )}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -321,6 +356,7 @@ export function InboxClient({ reels, trips }: InboxClientProps) {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         onFavourite={activeReel ? () => handleFavourite(activeReel.id) : undefined}
+        onDelete={activeReel ? () => handleDelete(activeReel.id) : undefined}
       />
     </>
   )

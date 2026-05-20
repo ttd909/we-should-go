@@ -17,6 +17,7 @@ interface CountryGroupProps {
   trips: Trip[]
   onReject: (id: string) => void
   onFavourite: (id: string) => void
+  onDelete: (id: string) => void
   onOpen: (reel: ReelSubmission) => void
 }
 
@@ -26,6 +27,7 @@ export function CountryGroup({
   trips,
   onReject,
   onFavourite,
+  onDelete,
   onOpen,
 }: CountryGroupProps) {
   const [open, setOpen] = useState(true)
@@ -102,6 +104,7 @@ export function CountryGroup({
                 index={i}
                 onReject={() => onReject(reel.id)}
                 onFavourite={() => onFavourite(reel.id)}
+                onDelete={() => onDelete(reel.id)}
                 onOpen={() => onOpen(reel)}
               />
             ))}

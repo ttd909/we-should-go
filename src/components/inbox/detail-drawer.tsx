@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { Drawer } from '@base-ui/react/drawer'
-import { X, MapPin, ExternalLink, Star } from 'lucide-react'
+import { X, MapPin, ExternalLink, Star, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { countryFlag } from '@/lib/country-flag'
@@ -15,9 +15,10 @@ interface DetailDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onFavourite?: () => void
+  onDelete?: () => void
 }
 
-export function DetailDrawer({ reel, open, onOpenChange, onFavourite }: DetailDrawerProps) {
+export function DetailDrawer({ reel, open, onOpenChange, onFavourite, onDelete }: DetailDrawerProps) {
   const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null)
 
   if (!reel) return null
@@ -33,6 +34,14 @@ export function DetailDrawer({ reel, open, onOpenChange, onFavourite }: DetailDr
       : googleThumbnailUrl && failedThumbnailUrl !== googleThumbnailUrl
         ? googleThumbnailUrl
         : null
+
+  const handleDelete = () => {
+    if (!onDelete) return
+    if (window.confirm('Permanently delete this saved place?')) {
+      onDelete()
+      onOpenChange(false)
+    }
+  }
 
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} swipeDirection="down">
@@ -96,25 +105,40 @@ export function DetailDrawer({ reel, open, onOpenChange, onFavourite }: DetailDr
                   )}
                 </div>
 
-                {/* Star */}
-                <button
-                  type="button"
-                  onClick={onFavourite}
-                  className={cn(
-                    'shrink-0 flex items-center justify-center size-11 rounded-full',
-                    'hover:bg-muted transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  )}
-                  aria-label={reel.is_favourite ? 'Remove from favourites' : 'Add to favourites'}
-                  aria-pressed={reel.is_favourite}
-                >
-                  <Star
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    onClick={onFavourite}
                     className={cn(
-                      'size-5 transition-colors',
-                      reel.is_favourite ? 'fill-orange-400 text-orange-400' : 'text-muted-foreground',
+                      'flex items-center justify-center size-11 rounded-full',
+                      'hover:bg-muted transition-colors',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     )}
-                  />
-                </button>
+                    aria-label={reel.is_favourite ? 'Remove from favourites' : 'Add to favourites'}
+                    aria-pressed={reel.is_favourite}
+                  >
+                    <Star
+                      className={cn(
+                        'size-5 transition-colors',
+                        reel.is_favourite ? 'fill-orange-400 text-orange-400' : 'text-muted-foreground',
+                      )}
+                    />
+                  </button>
+                  {onDelete && (
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      className={cn(
+                        'flex items-center justify-center size-11 rounded-full',
+                        'text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      )}
+                      aria-label="Permanently delete saved place"
+                    >
+                      <Trash2 className="size-5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Destination */}

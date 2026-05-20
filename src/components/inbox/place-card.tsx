@@ -110,10 +110,11 @@ interface PlaceCardProps {
   index?: number
   onReject: () => void
   onFavourite: () => void
+  onDelete: () => void
   onOpen: () => void
 }
 
-export function PlaceCard({ reel, index = 0, onReject, onFavourite, onOpen }: PlaceCardProps) {
+export function PlaceCard({ reel, index = 0, onReject, onFavourite, onDelete, onOpen }: PlaceCardProps) {
   const [starPulse, setStarPulse] = useState(false)
   const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null)
   const clickBlocked = useRef(false)
@@ -132,6 +133,14 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onOpen }: Pl
 
   const { offset, isDragging, exitDir, onTouchStart, onTouchMove, onTouchEnd, onMouseDown } =
     useSwipeGesture(handleReject, handleFavourite)
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    clickBlocked.current = true
+    if (window.confirm('Permanently delete this saved place?')) {
+      onDelete()
+    }
+  }
 
   const isProcessing  = reel.confidence === null
   const isNeedsReview = reel.status === 'needs_review'
@@ -241,6 +250,19 @@ export function PlaceCard({ reel, index = 0, onReject, onFavourite, onOpen }: Pl
           {isProcessing && (
             <div className="absolute inset-0 bg-muted animate-pulse" />
           )}
+          <button
+            type="button"
+            onClick={handleDelete}
+            className={cn(
+              'absolute left-1.5 top-1.5 flex items-center justify-center',
+              'size-8 rounded-full bg-black/45 text-white shadow-sm backdrop-blur',
+              'transition-colors hover:bg-red-600',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
+            )}
+            aria-label="Permanently delete saved place"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
         </div>
 
         {/* Metadata */}
