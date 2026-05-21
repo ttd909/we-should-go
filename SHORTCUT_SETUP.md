@@ -11,7 +11,7 @@ Works in: **TikTok, Instagram, Safari**
 You'll need two things:
 
 1. Your **personal token** from the We Should Go app
-2. The **app URL**, usually `https://weshouldgo.app`
+2. The **app URL**, usually `https://www.weshouldgo.app`
 
 ---
 

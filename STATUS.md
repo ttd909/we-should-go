@@ -2,7 +2,7 @@
 
 ## Current deployment status
 
-- Production app is live at `https://weshouldgo.app/`
+- Production app is live at `https://www.weshouldgo.app/`
 - Railway worker is connected to the same Supabase project and successfully polling `extraction_jobs`
 - TikTok `yt-dlp` failures now fall back to TikTok oEmbed metadata instead of hard-failing immediately
 - Anthropic key issue was fixed in Railway by keeping `ANTHROPIC_API_KEY` as only the Anthropic key value

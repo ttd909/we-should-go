@@ -40,7 +40,7 @@ Example copy:
 ### App
 
 - Next.js 16 app hosted on Vercel.
-- Production app URL: `https://weshouldgo.app`.
+- Production app URL: `https://www.weshouldgo.app`.
 - Supabase auth and database.
 - Railway Python worker handles reel extraction.
 - Vercel app and Railway worker communicate through Supabase:
@@ -53,9 +53,9 @@ Example copy:
 - Auth callback route is `/auth/callback`.
 - Magic-link redirects should use `NEXT_PUBLIC_SITE_URL`, currently intended as:
 
-`https://weshouldgo.app/auth/callback`
+`https://www.weshouldgo.app/auth/callback`
 
-- Supabase Auth settings must allow `https://weshouldgo.app/auth/callback`.
+- Supabase Auth settings must allow `https://www.weshouldgo.app/auth/callback`.
 
 ### Dreamlists
 
@@ -248,7 +248,7 @@ Vercel:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_SITE_URL=https://weshouldgo.app`
+- `NEXT_PUBLIC_SITE_URL=https://www.weshouldgo.app`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GOOGLE_PLACES_API_KEY`
 
@@ -315,8 +315,8 @@ If navigation still feels slow, next likely optimisations:
 
 ## Tomorrow Start Here
 
-1. Confirm Vercel has `NEXT_PUBLIC_SITE_URL=https://weshouldgo.app`.
-2. Confirm Supabase Auth has `https://weshouldgo.app/auth/callback` in allowed redirect URLs.
+1. Confirm Vercel has `NEXT_PUBLIC_SITE_URL=https://www.weshouldgo.app`.
+2. Confirm Supabase Auth has `https://www.weshouldgo.app/auth/callback` in allowed redirect URLs.
 3. Test magic-link login from another phone.
 4. Test iOS Shortcut save:
    - It should save into personal `My Dreamlist`.
