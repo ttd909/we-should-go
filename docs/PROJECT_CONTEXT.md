@@ -192,6 +192,9 @@ Trip planning UI is still basic.
   - Accepts iOS Shortcut URL values as either a string or an array.
   - Uses provided `dreamlist_id` when present and permitted.
   - Falls back to user’s personal Dreamlist when no Dreamlist is provided.
+- `GET /api/shortcut/dreamlists`
+  - Accepts Bearer token auth.
+  - Returns the user’s Dreamlists, labels, and `ids_by_label` for the dynamic iOS Shortcut Dreamlist picker.
 - `POST /api/share-target`
   - Android PWA share target.
   - Saves to user’s personal Dreamlist.
