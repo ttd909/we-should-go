@@ -175,10 +175,10 @@ export function PlaceCard({
   const socialThumbnailUrl = reel.thumbnail_url
   const googleThumbnailUrl = googlePlacePhotoUrl(reel.google_photo_name, 640)
   const imageUrl =
-    socialThumbnailUrl && failedThumbnailUrl !== socialThumbnailUrl
-      ? socialThumbnailUrl
-      : googleThumbnailUrl && failedThumbnailUrl !== googleThumbnailUrl
-        ? googleThumbnailUrl
+    googleThumbnailUrl && failedThumbnailUrl !== googleThumbnailUrl
+      ? googleThumbnailUrl
+      : socialThumbnailUrl && failedThumbnailUrl !== socialThumbnailUrl
+        ? socialThumbnailUrl
         : null
 
   const absOffset  = Math.abs(offset)
