@@ -52,15 +52,19 @@ export default async function IdeasPage({
       <div className="mx-auto mb-5 max-w-2xl md:hidden">
         <DreamlistSwitcher dreamlists={dreamlists} variant="mobile" />
       </div>
-      <div className="max-w-2xl mx-auto mb-7 space-y-1">
+      <div className="max-w-2xl mx-auto mb-5 space-y-1">
         <div className="mb-1 hidden items-center justify-between gap-3 md:flex">
           <p className="text-xs font-medium text-sky-700">{selectedDreamlist.name}</p>
           <DreamlistSwitcher dreamlists={dreamlists} />
         </div>
         <p className="text-xs font-medium text-sky-700 mb-1 md:hidden">{selectedDreamlist.name}</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--travel-ink)] sm:text-2xl">Ideas</h1>
-        <p className="pb-3 text-sm text-muted-foreground">Save the places you want to dream about later.</p>
-        <UrlInput dreamlistId={selectedDreamlist.id} />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-semibold tracking-tight text-[var(--travel-ink)] sm:text-2xl">Ideas</h1>
+            <p className="text-sm text-muted-foreground">Places you want to dream about later.</p>
+          </div>
+          <UrlInput dreamlistId={selectedDreamlist.id} dreamlistName={selectedDreamlist.name} />
+        </div>
       </div>
 
       {hasProcessing && <InboxPoller />}
