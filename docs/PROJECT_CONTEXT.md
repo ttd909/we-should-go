@@ -121,6 +121,8 @@ Notes:
 - Status `inbox` may remain as an internal DB value.
 - iOS Shortcut currently saves to the user’s personal `My Dreamlist` by default.
 - In-app paste box saves to the currently selected Dreamlist.
+- A single source reel can produce multiple Ideas when multiple places are mentioned.
+- Multi-place Ideas keep the original clip URL and additional generated rows point `source_idea_id` back to the initially submitted row.
 - Ideas can be copied to another Dreamlist the current user belongs to without moving/removing the original.
 
 ### Trips
@@ -210,6 +212,7 @@ It:
 - Falls back for blocked TikToks via TikTok oEmbed.
 - Falls back to page metadata scraping when needed.
 - Sends frames/thumbnail/text to Claude.
+- Asks Claude for every distinct place/venue mentioned, so one source clip can fan out into multiple Idea rows.
 - Caps fallback confidence at `0.7`.
 - Marks low-confidence results as `needs_review`.
 - Resolves places through Google Places Text Search.

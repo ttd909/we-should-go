@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
     .select('id')
     .eq('dreamlist_id', dreamlist.id)
     .eq('url_hash', urlHash)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (!existing) {

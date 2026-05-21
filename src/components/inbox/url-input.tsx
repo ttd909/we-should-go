@@ -80,7 +80,7 @@ export function UrlInput({ dreamlistId }: { dreamlistId: string }) {
         </Button>
       </div>
       {status === 'saved' && (
-        <p className="text-xs text-muted-foreground">Saved to this Dreamlist. The idea will update automatically.</p>
+        <p className="text-xs text-muted-foreground">Saved to this Dreamlist. Ideas will update automatically.</p>
       )}
       {status === 'error' && (
         <p className="text-xs text-destructive">{errorMsg}</p>

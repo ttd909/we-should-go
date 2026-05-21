@@ -30,24 +30,31 @@ You are extracting travel destination information from a social media reel.
 
 {context}
 
-Return a JSON object with exactly these fields:
+Return a JSON object with exactly this field:
 {{
-  "place_name": string | null,
-  "city": string | null,
-  "country": string | null,
-  "region": string | null,
-  "place_type": "cafe" | "hotel" | "restaurant" | "viewpoint" | "experience" | "other" | null,
-  "tags": string[],
-  "confidence": number,
-  "why_recommended": string | null
+  "places": [
+    {{
+      "place_name": string | null,
+      "city": string | null,
+      "country": string | null,
+      "region": string | null,
+      "place_type": "cafe" | "hotel" | "restaurant" | "viewpoint" | "experience" | "other" | null,
+      "tags": string[],
+      "confidence": number,
+      "why_recommended": string | null
+    }}
+  ]
 }}
 
 Rules:
-- country is the most important field — extract it even if place_name is unknown
-- Only set place_name if confidence > 0.7 — never hallucinate a venue name
+- Extract every distinct travel place or venue mentioned in the reel. A list like "Best cafes in Sydney" with 3 cafes should return 3 places.
+- If the reel clearly describes only one place, return exactly one place in the places array.
+- If the reel is a broad destination with no named venues, return one place for the destination/city/country.
+- country is the most important field - extract it even if place_name is unknown
+- Only set place_name if confidence > 0.7 - never hallucinate a venue name
 - region should be a broad area e.g. "Southeast Asia", "Western Europe", "East Africa"
-- tags: 2–5 short descriptive tags e.g. "hidden gem", "rooftop bar", "traditional", "beach"
-- confidence: 0.0–1.0 reflecting certainty of the extraction overall
+- tags: 2-5 short descriptive tags e.g. "hidden gem", "rooftop bar", "traditional", "beach"
+- confidence: 0.0-1.0 reflecting certainty of that specific place extraction
 - why_recommended: one sentence on why this looks worth visiting, from the reel's perspective
 - Respond with ONLY valid JSON, no markdown fences\
 """
@@ -69,16 +76,29 @@ def _fetch_image(url: str) -> Optional[tuple[str, str]]:
         return None
 
 
-def extract_place(
+def _normalise_place(parsed: dict) -> dict:
+    return {
+        'place_name': parsed.get('place_name'),
+        'city': parsed.get('city'),
+        'country': parsed.get('country'),
+        'region': parsed.get('region'),
+        'place_type': parsed.get('place_type'),
+        'tags': parsed.get('tags') if isinstance(parsed.get('tags'), list) else [],
+        'confidence': float(parsed.get('confidence', 0)),
+        'why_recommended': parsed.get('why_recommended'),
+    }
+
+
+def extract_places(
     extraction_input: dict,
     user_notes: Optional[str],
     platform: str,
-) -> dict:
+) -> list[dict]:
     """
-    Call Claude to identify the place in the reel.
+    Call Claude to identify every place in the reel.
 
-    Returns:
-      place_name, city, country, region, place_type, tags, confidence, why_recommended
+    Returns a list of place dicts containing place_name, city, country, region,
+    place_type, tags, confidence, why_recommended.
     """
     client = anthropic.Anthropic()
 
@@ -93,7 +113,7 @@ def extract_place(
         lines.append(f"User note: {user_notes}")
     lines.append(f"Platform: {platform}")
     if extraction_input.get('is_fallback'):
-        lines.append('Note: Only thumbnail and caption are available — no video frames or audio.')
+        lines.append('Note: Only thumbnail and caption are available - no video frames or audio.')
 
     context = '\n'.join(lines)
     prompt = EXTRACTION_PROMPT.format(context=context)
@@ -123,7 +143,7 @@ def extract_place(
         try:
             message = client.messages.create(
                 model='claude-sonnet-4-6',
-                max_tokens=512,
+                max_tokens=1200,
                 messages=[{'role': 'user', 'content': content}],
             )
             break
@@ -139,14 +159,21 @@ def extract_place(
 
     raw = next((b.text for b in message.content if b.type == 'text'), '')
     parsed: dict = json.loads(raw)
+    places = parsed.get('places')
 
-    return {
-        'place_name': parsed.get('place_name'),
-        'city': parsed.get('city'),
-        'country': parsed.get('country'),
-        'region': parsed.get('region'),
-        'place_type': parsed.get('place_type'),
-        'tags': parsed.get('tags') if isinstance(parsed.get('tags'), list) else [],
-        'confidence': float(parsed.get('confidence', 0)),
-        'why_recommended': parsed.get('why_recommended'),
-    }
+    if isinstance(places, list):
+        normalised = [_normalise_place(place) for place in places if isinstance(place, dict)]
+        if normalised:
+            return normalised
+
+    # Backward-compatible fallback if the model returns the old single-place shape.
+    return [_normalise_place(parsed)]
+
+
+def extract_place(
+    extraction_input: dict,
+    user_notes: Optional[str],
+    platform: str,
+) -> dict:
+    """Backward-compatible wrapper for older callers."""
+    return extract_places(extraction_input, user_notes, platform)[0]

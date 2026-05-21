@@ -127,6 +127,8 @@ export async function POST(request: NextRequest) {
     .select('*')
     .eq('dreamlist_id', dreamlistId)
     .eq('url_hash', urlHash)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (existing) {
@@ -180,7 +182,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       reel_id: reel.id,
       job_id: job?.id ?? null,
-      message: 'Saved — extracting place now',
+      message: 'Saved - extracting places now',
     },
     { status: 202 }
   )
