@@ -20,6 +20,7 @@ from typing import Optional
 import requests
 
 log = logging.getLogger(__name__)
+MAX_EXTRACTION_FRAMES = 12
 
 BROWSER_UA = (
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
@@ -221,7 +222,7 @@ def _pick_thumbnail(info: dict) -> Optional[str]:
     return None
 
 
-def _extract_frames(video_path: str, tmpdir: str) -> list[str]:
+def _extract_initial_sequence_frames(video_path: str, tmpdir: str) -> list[str]:
     """1fps, capped at 8 frames. Returns [] if ffmpeg is not installed."""
     frames_dir = os.path.join(tmpdir, 'frames')
     os.makedirs(frames_dir, exist_ok=True)
@@ -250,6 +251,98 @@ def _extract_frames(video_path: str, tmpdir: str) -> list[str]:
         with open(os.path.join(frames_dir, fname), 'rb') as fh:
             frames.append(base64.b64encode(fh.read()).decode())
     return frames
+
+
+def _video_duration(video_path: str) -> Optional[float]:
+    try:
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-show_entries', 'format=duration',
+                '-of', 'default=noprint_wrappers=1:nokey=1',
+                video_path,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        duration = float(result.stdout.strip())
+        return duration if duration > 0 else None
+    except (FileNotFoundError, subprocess.CalledProcessError, ValueError) as exc:
+        log.warning('ffprobe duration check failed: %s', exc)
+        return None
+
+
+def _even_timestamps(duration: float, count: int) -> list[float]:
+    return [
+        min(duration - 0.1, max(0.1, ((idx + 0.5) * duration) / count))
+        for idx in range(count)
+    ]
+
+
+def _read_frame_files(frames_dir: str) -> list[str]:
+    frames = []
+    for fname in sorted(os.listdir(frames_dir))[:MAX_EXTRACTION_FRAMES]:
+        with open(os.path.join(frames_dir, fname), 'rb') as fh:
+            frames.append(base64.b64encode(fh.read()).decode())
+    return frames
+
+
+def _extract_evenly_sampled_frames(video_path: str, frames_dir: str, duration: float) -> list[str]:
+    frame_count = min(MAX_EXTRACTION_FRAMES, max(1, round(duration / 2)))
+    for idx, timestamp in enumerate(_even_timestamps(duration, frame_count), start=1):
+        out_path = os.path.join(frames_dir, f'frame_{idx:03d}.jpg')
+        try:
+            subprocess.run(
+                [
+                    'ffmpeg',
+                    '-ss', f'{timestamp:.2f}',
+                    '-i', video_path,
+                    '-frames:v', '1',
+                    '-q:v', '5',
+                    out_path,
+                ],
+                capture_output=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            log.warning('ffmpeg frame sample failed at %.2fs: %s', timestamp, exc.stderr)
+
+    return _read_frame_files(frames_dir)
+
+
+def _extract_initial_frames(video_path: str, frames_dir: str) -> list[str]:
+    subprocess.run(
+        [
+            'ffmpeg', '-i', video_path,
+            '-vf', 'fps=1',
+            '-q:v', '5',
+            '-frames:v', str(MAX_EXTRACTION_FRAMES),
+            os.path.join(frames_dir, 'frame_%03d.jpg'),
+        ],
+        capture_output=True,
+        check=True,
+    )
+    return _read_frame_files(frames_dir)
+
+
+def _extract_frames(video_path: str, tmpdir: str) -> list[str]:
+    """Sample frames across the full video. Returns [] if ffmpeg is unavailable."""
+    frames_dir = os.path.join(tmpdir, 'frames')
+    os.makedirs(frames_dir, exist_ok=True)
+
+    try:
+        duration = _video_duration(video_path)
+        if duration:
+            return _extract_evenly_sampled_frames(video_path, frames_dir, duration)
+        return _extract_initial_frames(video_path, frames_dir)
+    except FileNotFoundError:
+        log.warning('ffmpeg not found - skipping frame extraction (install ffmpeg for full quality)')
+        return []
+    except subprocess.CalledProcessError as exc:
+        log.warning('ffmpeg error: %s', exc.stderr)
+        return []
 
 
 def _transcribe(video_path: str) -> Optional[str]:

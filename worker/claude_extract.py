@@ -48,6 +48,9 @@ Return a JSON object with exactly this field:
 
 Rules:
 - Extract every distinct travel place or venue mentioned in the reel. A list like "Best cafes in Sydney" with 3 cafes should return 3 places.
+- For "top 5", "top 10", "best places", "best cafes", "where to eat", or similar list reels, do not collapse the reel into one destination. Return one entry for each listed place you can identify.
+- Read visible text in frames, captions, signs, menu boards, and overlays as evidence for venue names.
+- Return up to 15 places when the reel lists many places.
 - If the reel clearly describes only one place, return exactly one place in the places array.
 - If the reel is a broad destination with no named venues, return one place for the destination/city/country.
 - country is the most important field - extract it even if place_name is unknown
@@ -121,7 +124,7 @@ def extract_places(
     content: list = []
 
     frames = extraction_input.get('frames') or []
-    for frame_b64 in frames[:5]:
+    for frame_b64 in frames[:12]:
         content.append({
             'type': 'image',
             'source': {'type': 'base64', 'media_type': 'image/jpeg', 'data': frame_b64},
@@ -143,7 +146,7 @@ def extract_places(
         try:
             message = client.messages.create(
                 model='claude-sonnet-4-6',
-                max_tokens=1200,
+                max_tokens=2500,
                 messages=[{'role': 'user', 'content': content}],
             )
             break
