@@ -58,7 +58,7 @@ End to end, in order.
    add a market in the morning"*.
 
 3. **The server builds the Claude request.** System prompt (block schema, the
-   five patch operations, and the family's own defaults) sits behind a
+   five patch operations, and house rules) sits behind a
    `cache_control` breakpoint. After it: the current itinerary as JSON
    including block IDs, the Trip's own Ideas that aren't yet scheduled, the
    recent chat turns, and the user's message.
@@ -163,11 +163,6 @@ create index itinerary_blocks_reel_idx
 -- Optimistic concurrency for two people editing one Trip.
 alter table public.trips
   add column if not exists version integer not null default 0;
-
--- Free-text household preferences, injected into the chat system prompt.
--- Editable in the app so it can be tuned without a deploy.
-alter table public.dreamlists
-  add column if not exists preferences text;
 
 create table public.trip_chat_messages (
   id                 uuid primary key default gen_random_uuid(),
@@ -276,19 +271,7 @@ Model: `claude-opus-5`.
 
 **Prompt structure**, ordered for cache stability:
 
-1. System prompt — block schema, the five patch ops, house rules, and a
-   **household preferences block**. This last part is the reason "add somewhere
-   for dinner" can resolve to something this family would actually pick, and it
-   is the part a commercial product could never hardcode.
-
-   **This block is not yet written and is an input required before
-   implementation.** It should cover, at minimum: home airport, dietary
-   constraints and preferences per traveller, typical accommodation style,
-   pace (how many things per day is too many), and any recurring fixtures a
-   trip usually includes. Store it as a single editable text field on the
-   Dreamlist rather than hardcoding it in source, so it can be tuned without a
-   deploy.
-
+1. System prompt — block schema, the five patch ops, and house rules.
    `cache_control` breakpoint sits at the end of this block.
 2. Current itinerary as JSON, with block IDs.
 3. The Trip's unscheduled Ideas, so the model can reference saved places.
@@ -370,6 +353,12 @@ Cache resolved place data on the block rather than re-fetching.
 
 ## Out of scope for v1
 
+- **A household preferences block in the system prompt.** Deferred
+  deliberately. Without it, an open-ended instruction like "add somewhere for
+  dinner" still has real context to work from — the Trip's unscheduled Ideas
+  and what is already on the itinerary — it just won't know standing facts
+  like a home airport or dietary constraints. Adding it later is a text field
+  and a prompt section, not a migration.
 - Claude-written or Claude-ranked clash options (the validator's option set is
   swappable later without a migration)
 - Routing-API travel times — the distance heuristic stands
