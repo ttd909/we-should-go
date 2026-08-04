@@ -208,9 +208,25 @@ create policy "trip_chat_messages: trip members full access"
 - `trip_days.scheduled_items` — replaced by `itinerary_blocks`. `trip_days`
   survives as the per-day container for notes and accommodation.
 
-This migration is destructive. Run it against a Supabase branch before
-production. Note that `STATUS.md` records migrations 005 and 006 as still
-pending a manual run in production — confirm those are applied first.
+This migration is destructive.
+
+**Schema state verified 2026-08-05:** all migrations through 008 are applied.
+Confirmed by column counts — `reel_submissions` has 31 columns, which requires
+005, 006 and 007; `trips` has 12, which requires 008. `STATUS.md` still carries
+a "pending production database action" note for 005; that note is stale.
+
+The three targets are present and unmodified: `trip_anchors` (9 columns),
+`trip_members` (2), `trip_days` (4, so `scheduled_items` is still there).
+
+Before running, confirm the dropped objects are actually empty with real
+counts — the dashboard's row estimates read `pg_class.reltuples`, which is only
+refreshed by `ANALYZE`, so `0` there can also mean "never analysed":
+
+```sql
+select count(*) from trip_anchors;
+select count(*) from trip_members;
+select count(*) from trip_days where cardinality(scheduled_items) > 0;
+```
 
 ### Idea status
 
@@ -371,9 +387,10 @@ Cache resolved place data on the block rather than re-fetching.
 
 ## Risks
 
-1. **Migration 009 is destructive** and drops three things. Production
-   migrations at 005 and 006 are recorded as still pending in `STATUS.md`.
-   Verify state before running, and run against a branch first.
+1. **Migration 009 is destructive** and drops three things. Schema state was
+   verified on 2026-08-05 — everything through 008 is applied, and all three
+   drop targets are present and unmodified. Remaining step is confirming they
+   hold no rows (see the Schema section), then running against a branch first.
 2. **The model inventing times** is the core risk of the clock-time model.
    `time_source` mitigates it visually, but the system prompt must also be
    explicit that unknown times are estimates.
