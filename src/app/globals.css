@@ -203,3 +203,22 @@
     animation: none !important;
   }
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  nav,
+  button,
+  [role="dialog"] {
+    display: none !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  article {
+    box-shadow: none !important;
+  }
+}

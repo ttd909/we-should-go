@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { CreateDreamlistForm } from '@/components/dreamlists/create-dreamlist-form'
 import { InviteLinkButton } from '@/components/dreamlists/invite-link-button'
 import type { Dreamlist } from '@/lib/types'
+import { TravelPreferencesForm } from '@/components/itinerary/travel-preferences-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,10 +36,8 @@ export default async function DreamlistsPage() {
         <h2 className="text-base font-medium">Your Dreamlists</h2>
         <div className="space-y-3">
           {((dreamlists ?? []) as Dreamlist[]).map((dreamlist) => (
-            <div
-              key={dreamlist.id}
-              className="flex items-start justify-between gap-3 rounded-lg border border-border bg-card p-3"
-            >
+            <div key={dreamlist.id} className="space-y-3 rounded-lg border border-border bg-card p-3">
+              <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">{dreamlist.name}</p>
                 <p className="text-xs text-muted-foreground capitalize">{dreamlist.type}</p>
@@ -50,6 +49,10 @@ export default async function DreamlistsPage() {
                     Anyone with the link can join
                   </p>
                 </div>
+              )}
+              </div>
+              {dreamlist.owner_id === user.id && (
+                <TravelPreferencesForm dreamlistId={dreamlist.id} initial={dreamlist.travel_preferences ?? {}} />
               )}
             </div>
           ))}

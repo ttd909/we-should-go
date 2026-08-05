@@ -6,6 +6,33 @@ export type AnchorType = 'flight' | 'hotel' | 'event' | 'reservation'
 export type DreamlistType = 'personal' | 'shared'
 export type DreamlistMemberRole = 'owner' | 'member'
 export type IdeaPriority = 'normal' | 'high'
+export type ItineraryBlockType = 'place' | 'meal' | 'transit' | 'flight' | 'hotel' | 'event' | 'note'
+export type ItineraryTimeSource = 'pinned' | 'estimated'
+export type ItineraryEditStatus = 'pending' | 'applied' | 'rejected' | 'undone'
+
+export interface TravelPreferences {
+  home_airport?: string
+  travellers?: string[]
+  dietary_needs?: string[]
+  preferred_pace?: 'slow' | 'balanced' | 'busy'
+  walking_tolerance?: 'low' | 'medium' | 'high'
+  transport_preferences?: string[]
+  interests?: string[]
+  recurring_requests?: string[]
+  default_day_start?: string
+  default_day_end?: string
+  notes?: string
+}
+
+export interface OpeningHours {
+  always_open?: boolean
+  periods: Array<{
+    open_day: number
+    open: string
+    close_day: number
+    close: string
+  }>
+}
 
 export interface Profile {
   id: string
@@ -62,6 +89,8 @@ export interface Trip {
   created_by_user_id: string
   created_at: string
   updated_at: string
+  version: number
+  travel_preferences: TravelPreferences
 }
 
 export interface TripMember {
@@ -93,6 +122,70 @@ export interface Dreamlist {
   name: string
   type: DreamlistType
   owner_id: string
+  created_at: string
+  updated_at: string
+  travel_preferences: TravelPreferences
+}
+
+export interface ItineraryBlock {
+  id: string
+  trip_id: string
+  day_date: string
+  start_time: string | null
+  duration_min: number | null
+  sort_order: number
+  time_source: ItineraryTimeSource
+  title: string
+  type: ItineraryBlockType
+  notes: string | null
+  is_locked: boolean
+  confirmation_ref: string | null
+  confidence: number | null
+  timezone: string | null
+  end_date: string | null
+  end_time: string | null
+  end_timezone: string | null
+  reel_submission_id: string | null
+  google_place_id: string | null
+  opening_hours: OpeningHours | null
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  created_by_user_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TripChatMessage {
+  id: string
+  trip_id: string
+  role: 'user' | 'assistant'
+  content: string | null
+  image_path: string | null
+  error_message: string | null
+  reply_to_message_id: string | null
+  client_request_id: string | null
+  created_by_user_id: string | null
+  created_at: string
+}
+
+export interface ItineraryEditSet {
+  id: string
+  trip_id: string
+  source_message_id: string | null
+  client_request_id: string
+  expected_version: number
+  status: ItineraryEditStatus
+  summary: string | null
+  patches: unknown[]
+  inverse_patches: unknown[]
+  hard_conflicts: unknown[]
+  warnings: unknown[]
+  warning_overrides: unknown[]
+  undoes_edit_id: string | null
+  created_by_user_id: string | null
+  applied_at: string | null
+  undone_at: string | null
   created_at: string
   updated_at: string
 }

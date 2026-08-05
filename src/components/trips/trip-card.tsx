@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import Link from 'next/link'
 import type { Trip, TripStatus } from '@/lib/types'
 
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -15,7 +16,8 @@ export function TripCard({ trip }: { trip: Trip }) {
     .join(', ')
 
   return (
-    <Card>
+    <Link href={`/trips/${trip.id}`} className="block rounded-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+    <Card className="transition-colors hover:border-sky-300 hover:bg-sky-50/40">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base font-medium">{trip.name}</CardTitle>
@@ -36,5 +38,6 @@ export function TripCard({ trip }: { trip: Trip }) {
         )}
       </CardContent>
     </Card>
+    </Link>
   )
 }

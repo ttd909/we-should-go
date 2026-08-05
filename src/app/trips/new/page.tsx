@@ -73,7 +73,7 @@ function NewTripForm() {
       return
     }
 
-    const { error } = await supabase.from('trips').insert({
+    const { data: createdTrip, error } = await supabase.from('trips').insert({
       dreamlist_id: dreamlistId,
       name: form.name,
       destination_city: form.destination_city || null,
@@ -89,7 +89,7 @@ function NewTripForm() {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push(`/trips?dreamlist=${dreamlistId}`)
+      router.push(`/trips/${createdTrip.id}`)
       router.refresh()
     }
   }

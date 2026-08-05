@@ -1,401 +1,463 @@
-# Conversational Itinerary Builder — Design
+# Conversational Itinerary Builder — Revised Design
 
-Date: 2026-08-04
-Status: Approved, not yet implemented
+Date: 2026-08-05
+Status: Core implementation complete locally on 2026-08-05; production migration and acceptance checks pending
 
 ## Summary
 
-Add a chat-driven itinerary builder to We Should Go. A Trip gets a day-by-day
-itinerary with real clock times. The user edits it by typing an instruction
-("move dinner back an hour and add a market in the morning") or uploading a
-photo (a flight confirmation, a screenshot of a restaurant). Claude returns
-structured patch operations rather than regenerating the itinerary, so edits
-are surgical and reviewable.
+Add a family-focused itinerary builder to We Should Go. A Trip has a reliable
+day-by-day timeline that can always be edited directly. Chat and photo upload
+make editing faster, but neither is the only way to use the itinerary.
 
-This closes the gap named in `docs/PROJECT_CONTEXT.md` — "No dedicated
-ItineraryItem table exists yet. Trip planning UI is still basic."
+The defining interaction remains conversational:
 
-### Product language
+> “Move dinner back an hour, add the market Susan saved in the morning, and
+> leave enough time to get across town.”
 
-Per `docs/PROJECT_CONTEXT.md`, visible UI uses **Dreamlist**, **Idea**, and
-**Trip**. This document adds one term:
+Claude returns a small, typed set of patch operations. The server validates
+those operations, enriches new places, checks the final proposal, and commits
+all itinerary changes atomically. It never replaces the entire itinerary with
+fresh model output.
 
-- **Block** — a single entry on a Trip day. A meal, a flight, a place pulled
-  from an Idea, a note. Internally `itinerary_blocks`.
+This feature belongs inside We Should Go rather than in a separate app. The
+existing Dreamlists, Ideas, family membership, Google Places data, Supabase
+project, authentication and deployment infrastructure are all useful inputs to
+an itinerary.
 
-Do not use "reel", "inbox", "board", or "workspace" in visible UI.
+## Product goal
 
-## Decisions
+Build a good private itinerary builder for one family. It does not need public
+onboarding, payments, marketplace features or general-purpose enterprise
+collaboration.
 
-Each of these was chosen deliberately; the rejected alternative is recorded so
-a future session doesn't relitigate it.
+It should be:
 
-| Decision | Chosen | Rejected, and why |
-|---|---|---|
-| Time model | Real clock times on every block | Loose morning/afternoon/evening buckets — rejected, user wants precision and travel-time checking |
-| Guessed vs chosen times | `time_source` enum: `pinned` / `estimated` | A single time field — rejected, the model inventing a confident-looking 10:30 is the main risk of clock times |
-| When edits apply | **Always ask on any clash.** Clean edits apply instantly with Undo | Auto-resolving obvious clashes — rejected, user wants nothing moved without a yes |
-| Who detects clashes | Deterministic validator in code | Asking the model to check — rejected, the model can forget; code cannot |
-| Who writes clash options | Fixed set, code-generated | Claude-written options — rejected for v1 on latency (every clash stops and asks, so a ~2s pause recurs constantly). Swappable later without a migration |
-| How the user answers | Tap a numbered option, or type freely | Tap-only — rejected |
-| Data model | One `itinerary_blocks` table | (a) Keeping `trip_anchors` separate — rejected, every clash check becomes a two-table union to preserve a distinction `is_locked` already captures. (b) JSONB per day — rejected, loses the FK to Ideas and lets two people clobber each other's days |
-| Time storage | `date` + bare `time`, local wall-clock | `timestamptz` — rejected, forces conversion on every read and gets Osaka wrong when planning from Sydney |
-| Provider | Anthropic API, `claude-opus-5` | Claude CLI backed by a subscription — not a permitted use. OpenAI — viable but adds a second provider when the worker is already on Claude. ChatGPT Pro grants no API access |
-| Photo path | Synchronous, straight through the Vercel route | The Railway worker — rejected, the worker exists for `yt-dlp`/`ffmpeg`/Whisper, which a screenshot needs none of |
+- dependable enough to hold confirmed flights, hotels and reservations;
+- quick enough to update by typing a sentence;
+- able to extract useful details from booking screenshots and photos;
+- aware of the family’s standing preferences;
+- connected to the Ideas already saved in a Trip’s Dreamlist;
+- manually editable whenever the model is wrong or unnecessary;
+- clear about which details are confirmed, estimated or uncertain.
 
-## How the app works
+## Product language
 
-End to end, in order.
+Visible UI continues to use the existing language:
 
-1. **The user opens a Trip.** `/trips/[id]` loads the Trip, its
-   `itinerary_blocks` grouped by `day_date`, and the recent
-   `trip_chat_messages`. The itinerary renders as a vertical timeline with
-   times down the left. Times the user set, or that came from a booking, render
-   at full weight; times Claude estimated render lighter.
+- **Dreamlist** — the shared or personal container.
+- **Idea** — a saved place or activity.
+- **Trip** — belongs to a Dreamlist.
+- **Block** — one entry in an itinerary, such as a meal, flight, hotel check-in,
+  place, activity, transit segment or note.
 
-2. **The user types an instruction** into the chat panel — a bottom sheet on
-   mobile, a sidebar on desktop. For example: *"move dinner back an hour and
-   add a market in the morning"*.
+Do not show “reel”, “inbox”, “board” or “workspace” in itinerary UI.
 
-3. **The server builds the Claude request.** System prompt (block schema, the
-   five patch operations, and house rules) sits behind a
-   `cache_control` breakpoint. After it: the current itinerary as JSON
-   including block IDs, the Trip's own Ideas that aren't yet scheduled, the
-   recent chat turns, and the user's message.
+## Core principles
 
-4. **Claude returns `{ patches[], summary }`** using structured outputs
-   (`output_config.format` with a strict schema), so the response is
-   guaranteed-parseable JSON rather than prose to be regexed.
+### 1. The timeline is the source of truth
 
-5. **The patches apply to an in-memory copy** of the itinerary. Nothing has
-   touched the database yet.
+Chat is an editing tool, not the data model. The structured itinerary in
+Postgres is authoritative. Reloading the page must never require replaying a
+chat transcript to rebuild the Trip.
 
-6. **The validator runs over the affected days only.** It is plain
-   TypeScript — no model involved. It checks for overlaps, cascade collisions,
-   locked-block hits, impossible travel times, closed-when-you-arrive, and
-   day overflow past midnight.
+### 2. Manual editing is always available
 
-7. **If the result is clean:** the patches commit inside one transaction,
-   `trips.version` increments, and the chat message is stored with both the
-   patch and its inverse. The UI animates the changed blocks and shows a
-   summary line with an **Undo** button.
+Every Block can be added, edited, moved and removed without using Claude. A
+model outage or misunderstanding must not make the itinerary unusable.
 
-8. **If the validator finds any clash:** nothing commits. The in-memory copy is
-   discarded. The chat returns the clash description plus a numbered list of
-   resolutions — push the later blocks down, swap the two, shorten the earlier
-   one, move it to another day, allow the overlap. The user taps one, or types
-   what they'd rather do, and the flow returns to step 3.
+### 3. AI makes surgical changes
 
-9. **Undo** applies the stored inverse patch. It is a normal patch application,
-   so it runs through the same validator and the same commit path.
+Claude returns allowlisted patch operations. It cannot write arbitrary rows,
+set ownership fields, choose database IDs, update timestamps or replace the
+whole itinerary.
 
-10. **Photo upload follows the identical path.** The image goes to Supabase
-    Storage for the chat record, and the same request that stores it sends the
-    image to Claude. Vision returns the same `Patch[]` shape a typed message
-    does — so steps 5 through 9 are unchanged. A flight confirmation becomes
-    locked, `pinned`-time blocks with a `confirmation_ref`; a restaurant
-    screenshot becomes a place block that then gets resolved against Google
-    Places for coordinates and opening hours.
+### 4. Confirmed and estimated information look different
 
-11. **Ideas flow into the itinerary.** Because a block can carry a
-    `reel_submission_id`, "add that beach club Susan saved" resolves against
-    the Trip's Dreamlist and links the block back to the Idea. The Idea's
-    `status` moves to `scheduled`.
+Times from a user or booking are **pinned**. Times suggested by the model are
+**estimated**. Low-confidence photo extraction is visibly flagged. Confirmed
+Blocks are locked against accidental movement.
 
-12. **The second person sees it.** Access is by Dreamlist membership, which
-    migration 008 already established. `trips.version` guards concurrent edits:
-    a patch computed against a stale version is rejected and re-run against
-    fresh state rather than overwriting.
+### 5. Writes are atomic
 
-## Schema
+Applying an edit updates Blocks, Trip version, Idea scheduling state and the
+edit history in one database transaction. Partial itinerary commits are not
+acceptable.
 
-New migration: `supabase/migrations/010_itinerary_blocks.sql`.
+### 6. Uncertain external data produces warnings
 
-```sql
-create type public.block_type as enum (
-  'place', 'meal', 'transit', 'flight', 'hotel', 'event', 'note'
-);
-create type public.time_source as enum ('pinned', 'estimated');
+Ordinary overlaps and changes to locked bookings require confirmation. Travel
+time and regular opening-hours data initially produce warnings because rough
+distance estimates and Google’s regular hours can be incomplete or wrong on
+special dates.
 
-create table public.itinerary_blocks (
-  id                  uuid primary key default gen_random_uuid(),
-  trip_id             uuid references public.trips(id) on delete cascade not null,
+### 7. Family context is a first-class feature
 
-  -- Position. day_date is authoritative: a 00:30 nightcap still belongs to
-  -- the previous day. start_time is local wall-clock at the destination --
-  -- no timezone conversion anywhere in this feature.
-  day_date            date not null,
-  start_time          time,                    -- null = unscheduled, in the day's loose tray
-  duration_min        integer,
-  time_source         public.time_source not null default 'estimated',
-  sort_order          integer not null default 0,
+The app is intentionally opinionated about its family. A Dreamlist can store
+home airport, travellers, dietary requirements, preferred pace, transport
+preferences, interests and recurring requests. A Trip can override those
+defaults.
 
-  -- Content
-  title               text not null,
-  type                public.block_type not null default 'place',
-  notes               text,
+### 8. Migrations are additive until the feature is proven
 
-  -- Locked blocks are never moved without explicit confirmation.
-  is_locked           boolean not null default false,
-  confirmation_ref    text,
+The first itinerary migration does not drop `trip_anchors`, `trip_members` or
+`trip_days.scheduled_items`. Legacy structures can be removed later in a
+separate migration after production use confirms they are unnecessary.
 
-  -- Provenance and place data
-  reel_submission_id  uuid references public.reel_submissions(id) on delete set null,
-  google_place_id     text,
-  opening_hours       jsonb,
-  address             text,
-  latitude            double precision,
-  longitude           double precision,
-  confidence          double precision,
+## End-to-end experience
 
-  created_by_user_id  uuid references public.profiles(id) on delete set null,
-  created_at          timestamptz not null default now(),
-  updated_at          timestamptz not null default now()
-);
+### Opening a Trip
 
-create index itinerary_blocks_trip_day_idx
-  on public.itinerary_blocks (trip_id, day_date, start_time, sort_order);
+`/trips/[id]` shows every date from `trips.start_date` through
+`trips.end_date`, including empty days. Trips without dates show a planning
+tray until dates are added.
 
-create index itinerary_blocks_reel_idx
-  on public.itinerary_blocks (reel_submission_id)
-  where reel_submission_id is not null;
+Each day contains:
 
--- Optimistic concurrency for two people editing one Trip.
-alter table public.trips
-  add column if not exists version integer not null default 0;
+- scheduled Blocks ordered by local start time;
+- an unscheduled tray for Ideas and notes without a time;
+- direct controls to add and edit Blocks;
+- warnings attached to the affected Blocks rather than hidden in chat.
 
-create table public.trip_chat_messages (
-  id                 uuid primary key default gen_random_uuid(),
-  trip_id            uuid references public.trips(id) on delete cascade not null,
-  role               text not null check (role in ('user', 'assistant')),
-  content            text,
-  image_url          text,
-  patches            jsonb,
-  inverse_patches    jsonb,
-  applied_at         timestamptz,
-  undone_at          timestamptz,
-  created_by_user_id uuid references public.profiles(id) on delete set null,
-  created_at         timestamptz not null default now()
-);
+The timeline uses the destination’s local wall-clock time for display. The
+stored `day_date` is the real local calendar date. An early-morning activity
+may be visually grouped with the previous evening, but the database does not
+pretend that 00:30 occurred on the previous date.
 
-create index trip_chat_messages_trip_idx
-  on public.trip_chat_messages (trip_id, created_at desc);
-```
+### Direct editing
 
-RLS reuses the helpers migration 008 already defines — no new policy logic:
+The user can tap a Block to edit:
 
-```sql
-alter table public.itinerary_blocks   enable row level security;
-alter table public.trip_chat_messages enable row level security;
+- title and type;
+- date, start time and duration;
+- notes;
+- pinned versus estimated time;
+- locked/confirmed status and confirmation reference;
+- linked Idea or Google place.
 
-create policy "itinerary_blocks: trip members full access"
-  on public.itinerary_blocks for all
-  using (public.is_trip_member(trip_id, auth.uid()))
-  with check (public.is_trip_member(trip_id, auth.uid()));
+Manual changes use the same patch validator and atomic commit path as chat
+changes. This gives Undo and concurrency protection to both interfaces.
 
-create policy "trip_chat_messages: trip members full access"
-  on public.trip_chat_messages for all
-  using (public.is_trip_member(trip_id, auth.uid()))
-  with check (public.is_trip_member(trip_id, auth.uid()));
-```
+### Text chat
 
-### Removals in the same migration
+The chat panel is a bottom drawer on mobile and a sidebar on desktop. The
+server sends Claude:
 
-- `trip_anchors` — absorbed into `itinerary_blocks` as `is_locked` blocks with
-  a `confirmation_ref`. Currently unused, so no data migration needed.
-- `trip_members` — vestigial. `is_trip_member()` has checked Dreamlist
-  membership since migration 008; this table is no longer read.
-- `trip_days.scheduled_items` — replaced by `itinerary_blocks`. `trip_days`
-  survives as the per-day container for notes and accommodation.
+1. a stable system prompt and strict patch schema;
+2. Trip dates, destination and current version;
+3. family and Trip-specific preferences;
+4. the current Blocks;
+5. relevant unscheduled Ideas from the Trip’s Dreamlist;
+6. a bounded set of recent chat turns;
+7. the current user instruction.
 
-This migration is destructive.
+Claude returns `{ summary, patches }`. The server runtime-validates the result,
+maps temporary new-block references to server-generated UUIDs, hydrates linked
+Ideas from trusted database rows, resolves new places, and validates the
+enriched proposal.
 
-**Schema state verified 2026-08-05:** all migrations through 008 are applied.
-Confirmed by column counts — `reel_submissions` has 31 columns, which requires
-005, 006 and 007; `trips` has 12, which requires 008. `STATUS.md` still carries
-a "pending production database action" note for 005; that note is stale.
+If the proposal is clean, it applies immediately and shows Undo.
 
-The three targets are present and unmodified: `trip_anchors` (9 columns),
-`trip_members` (2), `trip_days` (4, so `scheduled_items` is still there).
+If it overlaps another Block or changes a locked booking, the proposal is
+stored as a pending edit. Nothing is committed to the itinerary. The user can
+choose a deterministic resolution, explicitly allow the warning, or type a
+different instruction. Resolution buttons operate on the stored proposal;
+they do not ask Claude to recreate the original change from memory.
 
-Before running, confirm the dropped objects are actually empty with real
-counts — the dashboard's row estimates read `pg_class.reltuples`, which is only
-refreshed by `ANALYZE`, so `0` there can also mean "never analysed":
+### Photo upload
 
-```sql
-select count(*) from trip_anchors;
-select count(*) from trip_members;
-select count(*) from trip_days where cardinality(scheduled_items) > 0;
-```
+The browser validates and resizes an image, then uploads it directly to a
+private Supabase Storage bucket. Booking images never travel through a base64
+Server Action payload.
 
-### Idea status
+The server reads the private object, preserves its real MIME type, and sends it
+to Claude with the same structured patch schema used by text chat.
 
-`reel_submissions.status` already includes `scheduled`. Adding a block that
-references an Idea sets that status; removing the last block referencing it
-returns the Idea to `saved`.
+Photo-derived changes always open as a reviewable proposal before being
+committed. Examples:
 
-## Patch operations
+| Image | Proposed result |
+|---|---|
+| Flight confirmation | Locked flight Block with pinned departure details, arrival metadata and confirmation reference |
+| Hotel booking | Locked check-in/check-out Blocks or accommodation metadata |
+| Restaurant screenshot | Place or meal Block, then Google Places resolution |
+| Friend’s recommendation | Unscheduled Block with the original note |
+| Handwritten list | Several proposed Blocks, each independently reviewable |
+
+Low-confidence times, dates and confirmation references must be highlighted.
+The original image remains private and linked to the chat message for later
+checking.
+
+### Using saved Ideas
+
+Claude may reference only Idea IDs included in the trusted request context.
+When an Idea is selected, the server copies its place name, address,
+coordinates, Google Place ID and other available data from Postgres. Model
+output is not trusted to reproduce those fields.
+
+Scheduling state must account for references across every Trip. Removing an
+Idea from one Trip must not mark it unscheduled while another Trip still uses
+it. Prefer deriving scheduled state from `itinerary_blocks` references; if the
+existing status field is maintained, update it transactionally after checking
+all references.
+
+### Undo and concurrent family edits
+
+Every applied edit stores the forward patch, inverse patch and Trip version.
+For the initial release, Undo applies to the latest compatible edit. It uses
+the same validation and atomic database function as a normal change.
+
+`trips.version` protects Thien and Susan from overwriting one another. The
+database function compares the expected version before writing. A stale edit
+is reloaded and regenerated or returned for review; it is never partially
+applied.
+
+## Family preferences
+
+Dreamlist-level defaults should support:
+
+- home airport;
+- traveller names;
+- dietary needs and allergies;
+- preferred daily pace;
+- walking tolerance and transport preference;
+- interests and commonly requested activities;
+- recurring family notes, such as including a Muay Thai gym;
+- default day start/end preferences.
+
+Trip-specific preferences can override or add to these defaults. Preferences
+are context, not hard rules: the user can always explicitly request something
+different.
+
+For v1, a typed JSONB object on the Dreamlist is sufficient. Keep its schema in
+application code and runtime-validate it before placing it in a model request.
+
+## Revised data model
+
+### `itinerary_blocks`
+
+One row per Block. Important fields:
+
+- `id`, generated by the server/database;
+- `trip_id`;
+- `day_date`, the real local start date;
+- `start_time`, nullable local wall-clock time;
+- `duration_min`, nullable with a positive constraint;
+- `sort_order` for unscheduled or same-time ordering;
+- `time_source`: `pinned` or `estimated`;
+- `title`, `type`, `notes`;
+- `is_locked`, `confirmation_ref`, `confidence`;
+- optional `timezone` for the start location;
+- optional arrival/end metadata for flights and overnight travel;
+- `reel_submission_id` for a linked Idea;
+- trusted Google Place fields and normalized opening-hours data;
+- creator and timestamps.
+
+Flights and overnight travel may end on another date or in another timezone.
+They must not be forced through a same-day “past midnight” error. Ordinary
+place/meal Blocks can still warn when their duration unexpectedly crosses a
+day boundary.
+
+### `trip_chat_messages`
+
+Stores user and assistant turns, image paths, errors and links to edit sets.
+User input is saved before the external model call so a timeout never loses the
+instruction.
+
+### `itinerary_edit_sets`
+
+Stores one proposed or applied change:
+
+- Trip and originating message;
+- expected Trip version;
+- status: `pending`, `applied`, `rejected` or `undone`;
+- validated forward and inverse patches;
+- hard conflicts and soft warnings;
+- explicit overrides;
+- idempotency key and timestamps.
+
+This record lets a clash card survive refresh and lets a resolution operate on
+the exact proposal that caused it.
+
+### Trip and Dreamlist additions
+
+- `trips.version` for optimistic concurrency;
+- optional Trip preference overrides;
+- Dreamlist family preferences.
+
+### Storage
+
+Create a private `trip-chat-images` bucket in a migration. Storage policies
+must scope paths to authenticated members of the related Trip/Dreamlist. Do not
+use a general “any authenticated user may upload anywhere” policy.
+
+## Patch contract
+
+The model receives a strict discriminated union. Every object has
+`additionalProperties: false`, and every operation requires its relevant
+fields.
+
+Conceptually:
 
 ```ts
 type Patch =
-  | { op: 'add_block';    day: string; block: NewBlock }
-  | { op: 'update_block'; id: string; fields: Partial<Block> }
-  | { op: 'move_block';   id: string; day?: string; start_time?: string }
+  | { op: 'add_block'; client_ref: string; block: AllowedNewBlockFields }
+  | { op: 'update_block'; id: string; changes: AllowedMutableFields }
+  | { op: 'move_block'; id: string; day_date: string | null; start_time: string | null }
   | { op: 'remove_block'; id: string }
-  | { op: 'reorder_day';  day: string; block_ids: string[] }
+  | { op: 'reorder_day'; day_date: string; block_ids: string[] }
 ```
 
-`move_block` is formally a subset of `update_block`, but it gets its own
-operation because it is the one the validator scrutinises hardest — moves are
-where clashes originate, and a distinct op keeps that check explicit.
+The allowlists exclude IDs, ownership, Trip foreign keys, Google data,
+timestamps and other server-managed fields. New IDs are generated after schema
+validation. A linked Idea is represented by its ID and hydrated by the server.
 
-Every patch has a mechanical inverse, which is what makes Undo cheap:
+The same runtime schema validates model output again before any patch reaches
+the domain functions.
 
-| Patch | Inverse |
-|---|---|
-| `add_block` | `remove_block` with the new ID |
-| `remove_block` | `add_block` with the captured prior state |
-| `update_block` | `update_block` with the prior field values |
-| `move_block` | `move_block` back to the prior day and time |
-| `reorder_day` | `reorder_day` with the prior ID order |
+## Validation policy
 
-## The validator
+Validation runs after Idea hydration and Google Places enrichment.
 
-Plain TypeScript, `src/lib/itinerary/validate.ts`. Takes a day's blocks,
-returns `Clash[]`. Never calls a model.
+### Hard conflicts — require a decision
 
-| Check | Fires when |
-|---|---|
-| Overlap | Two blocks' time ranges intersect |
-| Cascade collision | A move pushes a block into a following one |
-| Locked-block hit | Any of the above involves `is_locked = true` |
-| Travel time | Gap between consecutive blocks is less than the estimated transit time |
-| Closed on arrival | `start_time` falls outside `opening_hours` for that weekday |
-| Day overflow | A block is pushed past midnight |
+- overlapping scheduled Blocks;
+- changing or removing a locked Block without explicit instruction;
+- invalid or non-positive duration;
+- date outside the Trip range unless the Trip range is being changed;
+- malformed patch references or attempts to update forbidden fields;
+- stale Trip version.
 
-Travel time uses the haversine distance between stored coordinates with a
-crude mode assumption — walking under 1km, otherwise transit at a city-average
-speed. This deliberately stays crude: `PROJECT_CONTEXT.md` lists "no complex
-route optimisation" under Do Not Build Yet. It only needs to catch "that's on
-the other side of the city," not produce accurate ETAs.
+### Soft warnings — may be explicitly accepted
 
-Blocks with null coordinates skip the travel check rather than blocking.
+- estimated travel gap is too short;
+- venue appears closed according to regular hours;
+- new place could not be resolved;
+- photo extraction has low confidence;
+- ordinary non-booking Block crosses midnight;
+- destination/timezone data is incomplete.
 
-## The chat call
+Opening-hours handling must include overnight periods, 24-hour places and the
+fact that regular hours may not reflect holidays or special dates.
 
-Model: `claude-opus-5`.
+## Atomic commit boundary
 
-**Prompt structure**, ordered for cache stability:
+External model and Google requests happen before the commit. The final database
+function must atomically:
 
-1. System prompt — block schema, the five patch ops, and house rules.
-   `cache_control` breakpoint sits at the end of this block.
-2. Current itinerary as JSON, with block IDs.
-3. The Trip's unscheduled Ideas, so the model can reference saved places.
-4. Recent chat turns.
-5. The user's message, and the image if there is one.
+1. verify Dreamlist membership;
+2. compare `trips.version` with the edit’s expected version;
+3. apply deletes/inserts/updates for the validated Block set;
+4. update Idea scheduling state safely;
+5. mark the edit set applied and store the inverse patch;
+6. increment Trip version;
+7. write the assistant summary/applied state.
 
-**Only the system prompt caches.** The itinerary changes after every applied
-edit, so it cannot be part of a stable prefix. At ~2,000 system tokens it is
-comfortably over Opus 5's 512-token minimum.
+Any database error rolls back all seven steps. The user’s original chat message
+is intentionally retained even when the itinerary commit fails.
 
-**Expected cost:** roughly 2.6¢ per edit, roughly 5¢ per photo (Opus 5 is
-high-resolution vision, up to 4,784 tokens per image). A heavily-planned trip
-of ~300 edits and ~60 photos lands around $10–12. The Railway worker's
-existing Idea extraction on `claude-sonnet-4-6` is unaffected.
+## Model and cost policy
 
-## Photo ingestion
+- Configure the itinerary model through an environment variable rather than
+  hardcoding it.
+- Start routine text edits on a capable Sonnet model.
+- Retry schema failures once with the validation error.
+- Escalate difficult instructions or booking images to Opus only when needed.
+- Keep output limits appropriate for patches rather than allowing very large
+  prose responses.
+- Record token usage and estimated cost per request.
+- Add a per-user/per-Trip rate limit and an idempotency key to prevent duplicate
+  submissions and accidental spend.
+- Cache only the stable system prompt; itinerary and chat state are volatile.
 
-Photos do **not** use the Railway worker. The worker exists to run `yt-dlp`,
-`ffmpeg`, and Whisper over video, which a screenshot does not need. Chat
-photos go synchronously through the Vercel route.
+## Delivery phases
 
-```
-photo -> Supabase Storage (chat record)
-      -> base64 in the same Claude call that returns the patches
-      -> same validator -> same commit path
-```
+### Phase 1 — Reliable itinerary foundation
 
-| Uploaded | Produces |
-|---|---|
-| Flight or hotel confirmation | `is_locked` blocks, `time_source: 'pinned'`, `confirmation_ref` set |
-| Restaurant screenshot | A place block, then resolved via Google Places for `google_place_id`, coordinates, `opening_hours` |
-| A friend's text recommendation | An unscheduled block in the day's loose tray |
-| A handwritten list | Several blocks at once |
+Deliver a useful non-AI itinerary:
 
-Photos are the highest-risk input — a misread departure time matters more than
-a misread restaurant name. Two guards: extraction returns a `confidence` score
-(the same pattern `reel_submissions.confidence` already uses to drive the
-needs-review flow), and low-confidence blocks land visibly flagged. Clash
-handling is unchanged — a confirmation that collides with an existing booking
-stops and asks like any other edit.
+- additive schema and RLS;
+- family and Trip preferences;
+- all Trip days and unscheduled tray;
+- direct Block create/edit/move/delete;
+- pure patch, time and validation functions with tests;
+- atomic database commit and version guard;
+- edit history and latest-edit Undo;
+- confirmed versus estimated styling.
 
-## Google Places
+Success means the family can plan a Trip reliably without Claude.
 
-`opening_hours` is a new field on the existing Places lookup. The worker's
-`worker/resolve_place.py` already performs Text Search; the itinerary path
-needs the same resolution server-side in the Next.js app for places that
-arrive by photo rather than by Idea.
+### Phase 2 — Conversational text editing
 
-`PROJECT_CONTEXT.md` flags that Google API cost needs budget alerts and quotas.
-Adding `opening_hours` to the requested field mask increases per-call cost.
-Cache resolved place data on the block rather than re-fetching.
+Add:
 
-## UI
+- strict structured patch output and runtime validation;
+- bounded conversational history;
+- trusted Idea hydration;
+- Google Places enrichment before validation;
+- clean-edit auto-apply;
+- persistent pending edits and deterministic clash resolution;
+- soft warning overrides;
+- idempotency, rate limits, timeout/error handling and usage tracking;
+- mobile chat drawer and desktop sidebar.
 
-`/trips/[id]` is greenfield — no existing page to work around.
+Success means common instructions apply the smallest expected change and can be
+undone or resolved without losing context.
 
-- **Timeline**, vertical, times down the left edge. Estimated times render
-  lighter than pinned ones, so a time the user chose never looks like one the
-  model invented.
-- **Loose tray** per day for blocks with a null `start_time`.
-- **Chat panel** — bottom sheet on mobile using `@base-ui/react` Drawer (the
-  pattern already working in `src/components/inbox/detail-drawer.tsx`),
-  sidebar on desktop.
-- **Change animation** on blocks touched by the last applied patch.
-- **Undo** on the summary line of any applied edit.
-- **Clash card** with numbered options and a free-text fallback.
-- Follows the existing design system — Libre Bodoni for place names, Geist Sans
-  for UI chrome, the travel colour tokens in `globals.css`.
+### Phase 3 — Private photo ingestion
 
-## Error handling
+Add:
 
-| Failure | Response |
-|---|---|
-| Patch references a non-existent block ID | Reject, re-run once with the error fed back, then surface plainly |
-| Stale `trips.version` at commit | Reject and re-run against fresh state; the user sees a brief retry, not a conflict dialog |
-| Anthropic API error or rate limit | Keep the user's message in the thread, show the error, offer retry — never lose input |
-| Google Places lookup fails | Block is created without coordinates; travel-time and hours checks skip it rather than blocking |
-| Vision extraction low confidence | Block lands flagged for review rather than silently |
+- private Storage bucket and membership-scoped policies;
+- client resize/compression, MIME and size validation;
+- direct upload rather than Server Action base64;
+- server-side vision call using the stored object;
+- reviewable pending proposals for every photo;
+- booking confidence indicators and confirmation references;
+- cleanup/retention rules for sensitive images.
 
-## Out of scope for v1
+Success means flight, hotel and restaurant screenshots produce accurate,
+reviewable Blocks without exposing or losing the original image.
 
-- **A household preferences block in the system prompt.** Deferred
-  deliberately. Without it, an open-ended instruction like "add somewhere for
-  dinner" still has real context to work from — the Trip's unscheduled Ideas
-  and what is already on the itinerary — it just won't know standing facts
-  like a home airport or dietary constraints. Adding it later is a text field
-  and a prompt section, not a migration.
-- Claude-written or Claude-ranked clash options (the validator's option set is
-  swappable later without a migration)
-- Routing-API travel times — the distance heuristic stands
-- Map view
-- Offline access
-- Booking or price lookups
-- Trip-level permissions — Dreamlist membership remains the access boundary,
-  consistent with `PROJECT_CONTEXT.md`
-- Automatic itinerary generation from scratch. Everything is user-initiated
+### Phase 4 — Travel polish and smarter planning
 
-## Risks
+Add only after the first three phases are stable:
 
-1. **Migration 010 is destructive** and drops three things. Schema state was
-   verified on 2026-08-05 — everything through 008 is applied, and all three
-   drop targets are present and unmodified. Remaining step is confirming they
-   hold no rows (see the Schema section), then running against a branch first.
-2. **The model inventing times** is the core risk of the clock-time model.
-   `time_source` mitigates it visually, but the system prompt must also be
-   explicit that unknown times are estimates.
-3. **"Always ask on any clash" could feel naggy** once real trips generate
-   real clashes. If it does, the fix is narrowing what counts as a clash, not
-   moving to auto-resolve — that decision was explicit.
-4. **Google Places cost** rises with the added `opening_hours` field and the
-   new server-side resolution path. Set quotas first.
+- better multi-city, timezone and overnight presentation;
+- explicit “build a draft from my saved Ideas” generation;
+- drag/reorder and stronger change animations;
+- print/export and compact travel-day summary;
+- optional routing API if the distance heuristic is insufficient;
+- model routing between Sonnet and Opus based on task difficulty;
+- operational dashboards for model cost, errors and Google quota;
+- later cleanup migration for proven-unused legacy Trip structures.
+
+Success means the itinerary is comfortable to use during a real trip, not only
+while planning at home.
+
+## Out of scope
+
+- public feed or public itinerary publishing;
+- payments, bookings or live price lookup;
+- complex route optimization in the initial phases;
+- a separate itinerary application or database;
+- trip-level permission systems beyond Dreamlist membership;
+- background itinerary generation without a user request;
+- destructive removal of legacy Trip tables before production proof;
+- full offline synchronization in the first release.
+
+## Main risks and mitigations
+
+1. **Model makes a valid-looking wrong change.** Strict field allowlists,
+   direct editing, visible estimates, reviewable photo edits and Undo.
+2. **Partial database update corrupts a Trip.** One version-guarded Postgres
+   function for every applied edit.
+3. **Booking photo exposes sensitive data.** Private storage, scoped policies,
+   bounded retention and no base64 logging.
+4. **Opening-hours or travel warning is wrong.** Treat these as warnings first;
+   preserve explicit user override.
+5. **Two family members edit at once.** Expected-version check and retry against
+   fresh state.
+6. **AI cost grows silently.** Model routing, bounded context/output, rate
+   limits and usage logging.
+7. **Large scope delays a useful result.** Phase 1 must stand alone as a good
+   manual itinerary before conversational features begin.
