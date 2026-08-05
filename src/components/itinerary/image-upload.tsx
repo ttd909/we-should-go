@@ -7,6 +7,34 @@ import { sendItineraryPhoto } from '@/lib/actions/itinerary'
 import { Button } from '@/components/ui/button'
 
 const ACCEPTED = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const AUTH_TIMEOUT_MS = 10_000
+const UPLOAD_TIMEOUT_MS = 30_000
+const REVIEW_TIMEOUT_MS = 60_000
+
+type UploadPhase = 'preparing' | 'uploading' | 'reviewing'
+
+interface PreparedImage {
+  blob: Blob
+  url: string
+  requestId: string
+  uploadedPath: string | null
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, milliseconds: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), milliseconds)
+    Promise.resolve(promise).then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (reason) => {
+        window.clearTimeout(timer)
+        reject(reason)
+      },
+    )
+  })
+}
 
 async function prepareImage(file: File): Promise<Blob> {
   if (/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name)) {
@@ -36,66 +64,98 @@ export function ImageUpload({ tripId, version, onComplete }: {
   onComplete: () => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [prepared, setPrepared] = useState<{ blob: Blob; url: string } | null>(null)
+  const [prepared, setPrepared] = useState<PreparedImage | null>(null)
   const [instruction, setInstruction] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [phase, setPhase] = useState<UploadPhase | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const busy = phase !== null
 
   async function choose(file: File | undefined) {
     if (!file) return
     setError(null)
-    setBusy(true)
+    setPhase('preparing')
     try {
       const blob = await prepareImage(file)
       if (prepared) URL.revokeObjectURL(prepared.url)
-      setPrepared({ blob, url: URL.createObjectURL(blob) })
+      setPrepared({
+        blob,
+        url: URL.createObjectURL(blob),
+        requestId: crypto.randomUUID(),
+        uploadedPath: null,
+      })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not prepare that image.')
     } finally {
-      setBusy(false)
+      setPhase(null)
       if (inputRef.current) inputRef.current.value = ''
     }
   }
 
   async function submit() {
     if (!prepared || busy) return
-    setBusy(true)
+    const current = prepared
+    setPhase(current.uploadedPath ? 'reviewing' : 'uploading')
     setError(null)
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setError('Please sign in again.')
-      setBusy(false)
-      return
-    }
-    const requestId = crypto.randomUUID()
-    const path = `${tripId}/${user.id}/${requestId}.jpg`
-    const { error: uploadError } = await supabase.storage.from('trip-chat-images').upload(path, prepared.blob, {
-      contentType: 'image/jpeg', upsert: false,
-    })
-    if (uploadError) {
-      setError(uploadError.message)
-      setBusy(false)
-      return
-    }
-    const result = await sendItineraryPhoto({
-      tripId, expectedVersion: version, clientRequestId: requestId,
-      imagePath: path,
-      instruction: instruction.trim() || 'Extract the travel or booking details and propose itinerary items.',
-    })
-    if (!result.ok) {
-      if (['rate_limited', 'validation', 'database'].includes(result.code)) {
-        await supabase.storage.from('trip-chat-images').remove([path])
+    let path = current.uploadedPath
+
+    try {
+      if (!path) {
+        const { data: { user } } = await withTimeout(
+          supabase.auth.getUser(),
+          AUTH_TIMEOUT_MS,
+          'Sign-in verification took too long. Check your connection and try again.',
+        )
+        if (!user) throw new Error('Please sign in again.')
+
+        path = `${tripId}/${user.id}/${current.requestId}.jpg`
+        const { error: uploadError } = await withTimeout(
+          supabase.storage.from('trip-chat-images').upload(path, current.blob, {
+            contentType: 'image/jpeg',
+            upsert: false,
+          }),
+          UPLOAD_TIMEOUT_MS,
+          'The photo upload took too long. Check your connection and try again.',
+        )
+        if (uploadError) throw new Error(uploadError.message)
+
+        const uploadedPath = path
+        setPrepared((value) => value?.requestId === current.requestId
+          ? { ...value, uploadedPath }
+          : value)
       }
-      setError(result.message)
-      setBusy(false)
-      return
+
+      setPhase('reviewing')
+      const result = await withTimeout(
+        sendItineraryPhoto({
+          tripId,
+          expectedVersion: version,
+          clientRequestId: current.requestId,
+          imagePath: path,
+          instruction: instruction.trim() || 'Extract the travel or booking details and propose itinerary items.',
+        }),
+        REVIEW_TIMEOUT_MS,
+        'Photo review took too long. The photo is saved, so you can safely try again.',
+      )
+      if (!result.ok) {
+        if (['rate_limited', 'validation', 'database'].includes(result.code)) {
+          await supabase.storage.from('trip-chat-images').remove([path])
+          setPrepared((value) => value?.requestId === current.requestId
+            ? { ...value, uploadedPath: null }
+            : value)
+        }
+        throw new Error(result.message)
+      }
+
+      URL.revokeObjectURL(current.url)
+      setPrepared(null)
+      setInstruction('')
+      onComplete()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not review that photo. Please try again.')
+    } finally {
+      setPhase(null)
     }
-    URL.revokeObjectURL(prepared.url)
-    setPrepared(null)
-    setInstruction('')
-    setBusy(false)
-    onComplete()
   }
 
   if (!prepared) {
@@ -114,12 +174,19 @@ export function ImageUpload({ tripId, version, onComplete }: {
         {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
         <img src={prepared.url} alt="Prepared upload" className="size-20 rounded-lg object-cover" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between"><p className="text-xs font-medium">Review before sending</p><Button type="button" variant="ghost" size="icon-xs" onClick={() => { URL.revokeObjectURL(prepared.url); setPrepared(null) }}><X /></Button></div>
-          <textarea value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder="Optional: This is our flight booking…" rows={2} className="mt-1 w-full resize-none rounded-lg border bg-background px-2 py-1.5 text-xs" />
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium">Review before sending</p>
+            <Button type="button" variant="ghost" size="icon-xs" disabled={busy} onClick={() => { URL.revokeObjectURL(prepared.url); setPrepared(null) }}><X /></Button>
+          </div>
+          <textarea value={instruction} onChange={(event) => setInstruction(event.target.value)} disabled={busy} placeholder="Optional: This is our flight booking…" rows={2} className="mt-1 w-full resize-none rounded-lg border bg-background px-2 py-1.5 text-xs" />
         </div>
       </div>
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
-      <Button type="button" size="sm" className="mt-2 w-full" onClick={submit} disabled={busy}><ImagePlus />{busy ? 'Reading photo…' : 'Send photo for review'}</Button>
+      <Button type="button" size="sm" className="mt-2 w-full" onClick={submit} disabled={busy}>
+        <ImagePlus />
+        {phase === 'uploading' ? 'Uploading photo…' : phase === 'reviewing' ? 'Reviewing photo…' : 'Send photo for review'}
+      </Button>
+      {phase === 'reviewing' && <p className="mt-1 text-center text-[11px] text-muted-foreground" aria-live="polite">This can take up to a minute.</p>}
     </div>
   )
 }

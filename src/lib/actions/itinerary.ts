@@ -612,14 +612,6 @@ export async function sendItineraryPhoto(input: unknown): Promise<ChatActionResu
     return { ok: false, code: rateError ? 'database' : 'rate_limited', message: rateError ? 'Could not check the assistant limit.' : `Please wait about ${rate?.retry_after_seconds ?? 60} seconds.` }
   }
 
-  const { data: image, error: downloadError } = await supabase.storage.from('trip-chat-images').download(parsed.data.imagePath)
-  if (downloadError || !image || image.size > 8 * 1024 * 1024) {
-    return { ok: false, code: 'validation', message: 'The photo could not be read or is too large.' }
-  }
-  const bytes = new Uint8Array(await image.arrayBuffer())
-  const mediaType = detectImageType(bytes)
-  if (!mediaType) return { ok: false, code: 'validation', message: 'Use a JPEG, PNG or WebP image.' }
-
   const { data: userMessage, error: messageError } = await supabase.from('trip_chat_messages').insert({
     trip_id: parsed.data.tripId, role: 'user', content: parsed.data.instruction,
     image_path: parsed.data.imagePath, client_request_id: parsed.data.clientRequestId,
@@ -630,6 +622,14 @@ export async function sendItineraryPhoto(input: unknown): Promise<ChatActionResu
   const started = Date.now()
   const modelName = process.env.ITINERARY_MODEL ?? 'claude-sonnet-4-6'
   try {
+    const { data: image, error: downloadError } = await supabase.storage.from('trip-chat-images').download(parsed.data.imagePath)
+    if (downloadError || !image || image.size > 8 * 1024 * 1024) {
+      throw new Error('The photo could not be downloaded or is too large')
+    }
+    const bytes = new Uint8Array(await image.arrayBuffer())
+    const mediaType = detectImageType(bytes)
+    if (!mediaType) throw new Error('The uploaded file is not a supported image')
+
     const state = await loadItineraryState(supabase, parsed.data.tripId)
     if (state.trip.version !== parsed.data.expectedVersion) {
       return { ok: false, code: 'stale', message: 'The trip changed. Refresh and submit the image again.' }
@@ -680,6 +680,13 @@ export async function sendItineraryPhoto(input: unknown): Promise<ChatActionResu
     revalidatePath(`/trips/${state.trip.id}`)
     return { ok: true, status: 'pending', version: state.trip.version, editId: pending.id }
   } catch (error) {
+    console.error('Itinerary photo processing failed', {
+      tripId: parsed.data.tripId,
+      requestId: parsed.data.clientRequestId,
+      error: error instanceof Error
+        ? { name: error.name, message: error.message, stack: error.stack }
+        : String(error),
+    })
     await supabase.from('trip_chat_messages').insert({
       trip_id: parsed.data.tripId, role: 'assistant', error_message: 'I could not read that image. You can retry or remove it.',
       reply_to_message_id: userMessage.id, created_by_user_id: user.id,
