@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { countryFlag } from '@/lib/country-flag'
 import { PLACE_TYPE_LABEL, googlePlacePhotoUrl, placeGradient } from './card-utils'
+import { useImageFallback } from './use-image-fallback'
 import type { Dreamlist, ReelSubmission } from '@/lib/types'
 
 const SWIPE_THRESHOLD = 80
@@ -127,7 +128,6 @@ export function PlaceCard({
   onOpen,
 }: PlaceCardProps) {
   const [starPulse, setStarPulse] = useState(false)
-  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [copyOpen, setCopyOpen] = useState(false)
   const clickBlocked = useRef(false)
@@ -174,12 +174,10 @@ export function PlaceCard({
   const flag          = countryFlag(reel.destination_country)
   const socialThumbnailUrl = reel.thumbnail_url
   const googleThumbnailUrl = googlePlacePhotoUrl(reel.google_photo_name, 640)
-  const imageUrl =
-    googleThumbnailUrl && failedThumbnailUrl !== googleThumbnailUrl
-      ? googleThumbnailUrl
-      : socialThumbnailUrl && failedThumbnailUrl !== socialThumbnailUrl
-        ? socialThumbnailUrl
-        : null
+  const { imageUrl, handleImageError } = useImageFallback(
+    googleThumbnailUrl,
+    socialThumbnailUrl,
+  )
 
   const absOffset  = Math.abs(offset)
   const revealRatio = Math.min(absOffset / SWIPE_THRESHOLD, 1)
@@ -261,7 +259,7 @@ export function PlaceCard({
               unoptimized
               className="object-cover"
               sizes="(max-width: 640px) 50vw, 33vw"
-              onError={() => setFailedThumbnailUrl(imageUrl)}
+              onError={handleImageError}
             />
           ) : (
             <div className={cn('absolute inset-0', placeGradient(reel.place_type))} />

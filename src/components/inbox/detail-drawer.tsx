@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
 import { Drawer } from '@base-ui/react/drawer'
 import { X, MapPin, ExternalLink, Star, Trash2 } from 'lucide-react'
@@ -8,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { countryFlag } from '@/lib/country-flag'
 import { PLACE_TYPE_LABEL, googleMapsUrl, googlePlacePhotoUrl, placeGradient } from './card-utils'
+import { useImageFallback } from './use-image-fallback'
 import type { ReelSubmission } from '@/lib/types'
 
 interface DetailDrawerProps {
@@ -19,21 +19,18 @@ interface DetailDrawerProps {
 }
 
 export function DetailDrawer({ reel, open, onOpenChange, onFavourite, onDelete }: DetailDrawerProps) {
-  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null)
+  const socialThumbnailUrl = reel?.thumbnail_url
+  const googleThumbnailUrl = googlePlacePhotoUrl(reel?.google_photo_name, 1000)
+  const { imageUrl, handleImageError } = useImageFallback(
+    googleThumbnailUrl,
+    socialThumbnailUrl,
+  )
 
   if (!reel) return null
 
   const destination = [reel.destination_city, reel.destination_country].filter(Boolean).join(', ')
   const flag = countryFlag(reel.destination_country)
   const mapsUrl = googleMapsUrl(reel)
-  const socialThumbnailUrl = reel.thumbnail_url
-  const googleThumbnailUrl = googlePlacePhotoUrl(reel.google_photo_name, 1000)
-  const imageUrl =
-    googleThumbnailUrl && failedThumbnailUrl !== googleThumbnailUrl
-      ? googleThumbnailUrl
-      : socialThumbnailUrl && failedThumbnailUrl !== socialThumbnailUrl
-        ? socialThumbnailUrl
-        : null
 
   const handleDelete = () => {
     if (!onDelete) return
@@ -82,7 +79,7 @@ export function DetailDrawer({ reel, open, onOpenChange, onFavourite, onDelete }
                   unoptimized
                   className="object-cover"
                   sizes="100vw"
-                  onError={() => setFailedThumbnailUrl(imageUrl)}
+                  onError={handleImageError}
                 />
               ) : (
                 <div className={cn('absolute inset-0', placeGradient(reel.place_type))} />

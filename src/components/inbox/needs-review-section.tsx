@@ -6,6 +6,7 @@ import { Collapsible } from '@base-ui/react/collapsible'
 import { ChevronDown, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { googlePlacePhotoUrl, placeGradient } from './card-utils'
+import { useImageFallback } from './use-image-fallback'
 import type { ReelSubmission } from '@/lib/types'
 
 interface NeedsReviewSectionProps {
@@ -25,7 +26,6 @@ function NeedsReviewCard({
 }) {
   const [input, setInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,12 +46,10 @@ function NeedsReviewCard({
     .join(', ')
   const socialThumbnailUrl = reel.thumbnail_url
   const googleThumbnailUrl = googlePlacePhotoUrl(reel.google_photo_name, 160)
-  const imageUrl =
-    googleThumbnailUrl && failedThumbnailUrl !== googleThumbnailUrl
-      ? googleThumbnailUrl
-      : socialThumbnailUrl && failedThumbnailUrl !== socialThumbnailUrl
-        ? socialThumbnailUrl
-        : null
+  const { imageUrl, handleImageError } = useImageFallback(
+    googleThumbnailUrl,
+    socialThumbnailUrl,
+  )
 
   return (
     <div className="flex gap-3 py-3 border-b border-border last:border-0">
@@ -65,7 +63,7 @@ function NeedsReviewCard({
             unoptimized
             className="object-cover"
             sizes="64px"
-            onError={() => setFailedThumbnailUrl(imageUrl)}
+            onError={handleImageError}
           />
         ) : (
           <div className={cn('absolute inset-0', placeGradient(reel.place_type))} />
