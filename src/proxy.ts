@@ -43,8 +43,9 @@ export async function proxy(request: NextRequest) {
     '/reset-password',
     '/auth',
   ].some((route) => pathname === route || pathname.startsWith(`${route}/`))
+  const isPublicItinerary = pathname === '/itinerary' || pathname.startsWith('/itinerary/')
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !isPublicItinerary) {
     const url = request.nextUrl.clone()
     const next = `${request.nextUrl.pathname}${request.nextUrl.search}`
     url.pathname = '/login'

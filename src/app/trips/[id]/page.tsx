@@ -8,6 +8,8 @@ import { ChatPanel, type ChatMessageView } from '@/components/itinerary/chat-pan
 import type { PendingEditView } from '@/components/itinerary/pending-edit-card'
 import { DayNavigator } from '@/components/itinerary/day-navigator'
 import { datesBetween } from '@/lib/itinerary/time'
+import { PublicationControls } from '@/components/itinerary/publication-controls'
+import type { ItineraryPublicationStatus } from '@/lib/itinerary/publication'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,12 +25,14 @@ export default async function TripItineraryPage({ params }: { params: Promise<{ 
     { data: editData },
     { data: messageData },
     { data: pendingData },
+    { data: publicationData },
   ] = await Promise.all([
     supabase.from('trips').select('*').eq('id', id).single(),
     supabase.from('itinerary_blocks').select('*').eq('trip_id', id).order('day_date').order('start_time').order('sort_order'),
     supabase.from('itinerary_edit_sets').select('id,summary').eq('trip_id', id).eq('status', 'applied').order('applied_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('trip_chat_messages').select('*').eq('trip_id', id).order('created_at', { ascending: false }).limit(30),
     supabase.from('itinerary_edit_sets').select('id,summary,hard_conflicts,warnings,patches,source_message_id').eq('trip_id', id).eq('status', 'pending').order('created_at', { ascending: true }),
+    supabase.from('published_itineraries').select('share_slug,source_version,published_at,is_active').eq('trip_id', id).maybeSingle(),
   ])
 
   if (tripError || !tripData) notFound()
@@ -75,6 +79,11 @@ export default async function TripItineraryPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </header>
+      <PublicationControls
+        tripId={trip.id}
+        tripVersion={trip.version}
+        initialPublication={(publicationData as ItineraryPublicationStatus | null) ?? null}
+      />
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[15rem_minmax(32rem,1fr)_24rem] 2xl:gap-6">
         <DayNavigator trip={trip} blocks={blocks} />
         <ItineraryClient

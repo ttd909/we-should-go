@@ -27,6 +27,7 @@ export function Nav() {
     '/forgot-password',
     '/reset-password',
     '/auth',
+    '/itinerary',
   ].some((route) => pathname === route || pathname.startsWith(`${route}/`))
 
   if (hideChrome) return null
