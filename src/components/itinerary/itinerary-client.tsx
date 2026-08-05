@@ -96,8 +96,13 @@ export function ItineraryClient({
         clientRequestId: requestId, allowWarnings: false, allowLocked: false,
       }
       let result = await deleteItineraryBlock(base)
+      let allowLocked = false
       if (!result.ok && result.conflicts?.every((issue) => issue.type === 'locked_conflict') && window.confirm(`${issueText(result)}\n\nRemove it anyway?`)) {
+        allowLocked = true
         result = await deleteItineraryBlock({ ...base, allowLocked: true })
+      }
+      if (!result.ok && !result.conflicts?.length && result.warnings?.length && window.confirm(`${issueText(result)}\n\nRemove the item anyway?`)) {
+        result = await deleteItineraryBlock({ ...base, allowLocked, allowWarnings: true })
       }
       await finish(result)
     })
