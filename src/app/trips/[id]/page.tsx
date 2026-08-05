@@ -1,11 +1,13 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, MapPin } from 'lucide-react'
+import { ArrowLeft, CalendarRange, CheckCircle2, ListChecks, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import type { ItineraryBlock, ItineraryEditSet, Trip, TripChatMessage } from '@/lib/types'
 import { ItineraryClient } from '@/components/itinerary/itinerary-client'
 import { ChatPanel, type ChatMessageView } from '@/components/itinerary/chat-panel'
 import type { PendingEditView } from '@/components/itinerary/pending-edit-card'
+import { DayNavigator } from '@/components/itinerary/day-navigator'
+import { datesBetween } from '@/lib/itinerary/time'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,24 +52,34 @@ export default async function TripItineraryPage({ params }: { params: Promise<{ 
       ? messageById.get(edit.source_message_id)?.image_url ?? null
       : null,
   })) as PendingEditView[]
+  const blocks = (blockData ?? []) as ItineraryBlock[]
+  const dayCount = trip.start_date && trip.end_date
+    ? datesBetween(trip.start_date, trip.end_date).length
+    : new Set(blocks.map((block) => block.day_date)).size
+  const confirmedCount = blocks.filter((block) => block.is_locked).length
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 pb-24 sm:py-8">
-      <Link href={`/trips?dreamlist=${trip.dreamlist_id}`} className="mb-5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" />Back to trips</Link>
-      <header className="mb-7">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+    <main className="mx-auto w-full max-w-[1800px] px-4 py-5 pb-24 lg:px-6 2xl:px-8 print:max-w-none print:px-0">
+      <Link href={`/trips?dreamlist=${trip.dreamlist_id}`} className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground print:hidden"><ArrowLeft className="size-4" />Back to trips</Link>
+      <header className="mb-5 rounded-2xl border border-sky-100 bg-white/70 px-4 py-4 shadow-sm backdrop-blur sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-sky-700">Trip planner</p>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{trip.name}</h1>
             {destination && <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground"><MapPin className="size-4" />{destination}</p>}
           </div>
-          {trip.start_date && trip.end_date && <p className="rounded-full bg-sky-100 px-3 py-1.5 text-xs font-medium text-sky-800">{trip.start_date} – {trip.end_date}</p>}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {trip.start_date && trip.end_date && <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1.5 font-medium text-sky-800"><CalendarRange className="size-3.5" />{trip.start_date} – {trip.end_date}</span>}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 font-medium text-slate-700"><ListChecks className="size-3.5" />{dayCount} days · {blocks.length} plans</span>
+            {confirmedCount > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 font-medium text-amber-800"><CheckCircle2 className="size-3.5" />{confirmedCount} confirmed</span>}
+          </div>
         </div>
       </header>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[15rem_minmax(32rem,1fr)_24rem] 2xl:gap-6">
+        <DayNavigator trip={trip} blocks={blocks} />
         <ItineraryClient
           trip={trip}
-          blocks={(blockData ?? []) as ItineraryBlock[]}
+          blocks={blocks}
           latestEdit={(editData as Pick<ItineraryEditSet, 'id' | 'summary'> | null) ?? null}
         />
         <ChatPanel

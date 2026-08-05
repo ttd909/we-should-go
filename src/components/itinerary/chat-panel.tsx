@@ -110,7 +110,7 @@ export function ChatPanel({
 
   return (
     <>
-      <div className="hidden h-[calc(100vh-8rem)] lg:sticky lg:top-24 lg:block">{content}</div>
+      <div className="hidden h-[calc(100vh-6rem)] lg:sticky lg:top-20 lg:block">{content}</div>
       <Button className="fixed bottom-20 right-4 z-40 h-11 rounded-full px-4 shadow-lg lg:hidden" onClick={() => setOpen(true)}><MessageCircle />Plan with AI{pendingEdits.length > 0 && <span className="rounded-full bg-amber-400 px-1.5 text-[10px] text-amber-950">{pendingEdits.length}</span>}</Button>
       {open && (
         <div className="fixed inset-0 z-50 bg-slate-950/40 lg:hidden">

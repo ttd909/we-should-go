@@ -34,7 +34,7 @@ export function Nav() {
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-sky-100/80 bg-white/75 backdrop-blur-xl">
-        <nav className="mx-auto flex min-h-12 max-w-4xl items-center justify-between gap-3 px-4 py-2">
+        <nav className="mx-auto flex min-h-12 w-full max-w-[1800px] items-center justify-between gap-3 px-4 py-2 lg:px-6 2xl:px-8">
           <Link href={withDreamlist('/', dreamlist)} className="min-w-0 truncate text-sm font-semibold tracking-tight text-[var(--travel-ink)] sm:text-base">
             We Should Go
           </Link>

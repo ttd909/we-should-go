@@ -170,7 +170,7 @@ export function ItineraryClient({
       </div>
 
       {days.length > 1 && (
-        <nav className="sticky top-0 z-20 -mx-2 flex gap-1 overflow-x-auto border-y border-sky-100 bg-background/95 px-2 py-2 backdrop-blur print:hidden" aria-label="Trip days">
+        <nav className="sticky top-12 z-20 -mx-2 flex gap-1 overflow-x-auto border-y border-sky-100 bg-background/95 px-2 py-2 backdrop-blur xl:hidden print:hidden" aria-label="Trip days">
           {days.map((day, index) => <a key={day} href={`#day-${day}`} className="shrink-0 rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-800 hover:bg-sky-100">Day {index + 1}</a>)}
         </nav>
       )}
