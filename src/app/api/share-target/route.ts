@@ -2,7 +2,8 @@ import crypto from 'crypto'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { detectPlatform } from '@/lib/platform'
+import { consumeIngestionRateLimit } from '@/lib/ingestion-rate-limit'
+import { findSupportedReelUrl } from '@/lib/platform'
 
 export async function POST(request: NextRequest) {
   // Android PWA share uses the browser session, not a bearer token
@@ -13,29 +14,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  let url: string | undefined
+  let sharedValue: string | undefined
   try {
     const formData = await request.formData()
-    url = formData.get('url')?.toString().trim()
+    sharedValue =
+      formData.get('url')?.toString().trim() ||
+      formData.get('text')?.toString().trim()
   } catch {
     return NextResponse.redirect(new URL('/?error=bad-request', request.url))
   }
 
-  if (!url) {
+  if (!sharedValue) {
     return NextResponse.redirect(new URL('/?error=no-url', request.url))
   }
 
-  let cleanUrl: string
-  try {
-    cleanUrl = new URL(url).toString()
-  } catch {
-    return NextResponse.redirect(new URL('/?error=invalid-url', request.url))
-  }
-
-  const platform = detectPlatform(cleanUrl)
-  if (platform === 'other') {
+  const parsedUrl = findSupportedReelUrl(sharedValue)
+  if (!parsedUrl) {
     return NextResponse.redirect(new URL('/?error=unsupported', request.url))
   }
+  const { platform, url: cleanUrl } = parsedUrl
 
   const urlHash = crypto.createHash('sha256').update(cleanUrl).digest('hex')
   const admin = createAdminClient()
@@ -63,6 +60,19 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
 
   if (!existing) {
+    let rateLimit
+    try {
+      rateLimit = await consumeIngestionRateLimit(user.id)
+    } catch {
+      return NextResponse.redirect(new URL('/?error=temporarily-unavailable', request.url))
+    }
+
+    if (!rateLimit.allowed) {
+      const response = NextResponse.redirect(new URL('/?error=rate-limited', request.url))
+      response.headers.set('Retry-After', String(rateLimit.retryAfterSeconds))
+      return response
+    }
+
     const { data: reel } = await admin
       .from('reel_submissions')
       .insert({

@@ -1,7 +1,7 @@
 """
 Reel content extraction.
 
-Primary path (both platforms): yt_dlp Python API → frames + whisper transcript.
+Primary path (all supported platforms): yt_dlp Python API → frames + whisper transcript.
 Fallback path: TikTok oEmbed or page meta scraping → thumbnail + caption.
 
 Using the yt_dlp Python API (not subprocess) avoids PATH issues on Windows.
@@ -42,6 +42,8 @@ SOFT_YTDLP_ERRORS = (
     'forbidden',
     '403',
     '429',
+    'cannot parse data',
+    'no video formats found',
 )
 
 _whisper_model = None

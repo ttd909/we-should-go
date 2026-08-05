@@ -1,8 +1,8 @@
 # Save to We Should Go - iOS Shortcut Setup
 
-This guide sets up a share button on your iPhone so you can save a TikTok or Instagram reel directly from those apps, without opening We Should Go first.
+This guide sets up a share button on your iPhone so you can save a TikTok, Instagram, or Facebook reel directly from those apps, without opening We Should Go first.
 
-Works in: **TikTok, Instagram, Safari**
+Works in: **TikTok, Instagram, Facebook, Safari**
 
 ---
 
@@ -133,7 +133,7 @@ If you skip Action 4 and leave `dreamlist_id` out of the save request, the Short
 
 ## Step 5 - Test it
 
-1. Open TikTok or Instagram and find any reel
+1. Open TikTok, Instagram, or Facebook and find any public reel
 2. Tap **Share**
 3. Tap **Save to We Should Go**
 4. Choose a Dreamlist when prompted

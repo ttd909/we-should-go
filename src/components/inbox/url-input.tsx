@@ -110,7 +110,7 @@ export function UrlInput({
           <form onSubmit={handleSubmit} className="space-y-3 px-4 pb-5">
             <Input
               type="url"
-              placeholder="Paste a TikTok or Instagram reel"
+              placeholder="Paste a TikTok, Instagram, or Facebook reel"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               required

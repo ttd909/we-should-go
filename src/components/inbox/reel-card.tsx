@@ -6,6 +6,7 @@ import type { ReelSubmission } from '@/lib/types'
 const PLATFORM_LABEL: Record<string, string> = {
   tiktok: 'TikTok',
   instagram: 'Instagram',
+  facebook: 'Facebook',
   other: 'Other',
 }
 

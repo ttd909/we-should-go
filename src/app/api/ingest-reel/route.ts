@@ -2,7 +2,8 @@ import crypto from 'crypto'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { detectPlatform } from '@/lib/platform'
+import { consumeIngestionRateLimit } from '@/lib/ingestion-rate-limit'
+import { findSupportedReelUrl } from '@/lib/platform'
 
 async function getAuthedUserId(request: NextRequest): Promise<string | null> {
   // Bearer token path — used by iOS Shortcut
@@ -92,21 +93,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '"url" is required' }, { status: 400 })
   }
 
-  // Basic URL structure check
-  let cleanUrl: string
-  try {
-    cleanUrl = new URL(url.trim()).toString()
-  } catch {
-    return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
-  }
-
-  const platform = detectPlatform(cleanUrl)
-  if (platform === 'other') {
+  const parsedUrl = findSupportedReelUrl(url)
+  if (!parsedUrl) {
     return NextResponse.json(
-      { error: 'Only TikTok and Instagram URLs are supported' },
+      { error: 'Enter a valid TikTok, Instagram, or Facebook reel URL' },
       { status: 400 }
     )
   }
+  const { platform, url: cleanUrl } = parsedUrl
 
   const urlHash = crypto.createHash('sha256').update(cleanUrl).digest('hex')
   const notesStr = typeof notes === 'string' ? notes.trim() || null : null
@@ -133,6 +127,29 @@ export async function POST(request: NextRequest) {
 
   if (existing) {
     return NextResponse.json(existing, { status: 200 })
+  }
+
+  let rateLimit
+  try {
+    rateLimit = await consumeIngestionRateLimit(userId)
+  } catch {
+    return NextResponse.json(
+      { error: 'Saving is temporarily unavailable. Please try again shortly.' },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many new reels. Please wait before saving another.' },
+      {
+        status: 429,
+        headers: {
+          'Cache-Control': 'no-store',
+          'Retry-After': String(rateLimit.retryAfterSeconds),
+        },
+      },
+    )
   }
 
   // Insert the reel submission

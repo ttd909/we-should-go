@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export default async function IdeasPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ dreamlist?: string }>
+  searchParams?: Promise<{ dreamlist?: string; saved?: string; error?: string }>
 }) {
   const params = await searchParams
   const supabase = await createClient()
@@ -46,6 +46,15 @@ export default async function IdeasPage({
   const trips = (tripsResult.data ?? []) as Trip[]
 
   const hasProcessing = reels.some(r => r.confidence === null)
+  const shareMessage = params?.saved === 'true'
+    ? { tone: 'success', text: 'Idea saved. Place details are being extracted.' }
+    : params?.error === 'rate-limited'
+      ? { tone: 'error', text: 'Too many new reels were saved recently. Please wait and try again.' }
+      : params?.error === 'temporarily-unavailable'
+        ? { tone: 'error', text: 'Saving is temporarily unavailable. Please try again shortly.' }
+        : params?.error
+          ? { tone: 'error', text: 'That shared item was not a supported public reel URL.' }
+          : null
 
   return (
     <main className="px-4 py-6 sm:py-9">
@@ -68,6 +77,19 @@ export default async function IdeasPage({
       </div>
 
       {hasProcessing && <InboxPoller />}
+
+      {shareMessage && (
+        <p
+          className={
+            shareMessage.tone === 'success'
+              ? 'mx-auto mb-4 max-w-2xl rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800'
+              : 'mx-auto mb-4 max-w-2xl rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700'
+          }
+          role={shareMessage.tone === 'error' ? 'alert' : 'status'}
+        >
+          {shareMessage.text}
+        </p>
+      )}
 
       <div className="max-w-4xl mx-auto">
         <InboxClient

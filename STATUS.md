@@ -98,11 +98,11 @@ create index if not exists reel_submissions_google_place_id_idx
 
 | File | Status | What changed |
 |---|---|---|
-| `src/app/api/ingest-reel/route.ts` | **Modified** | URL validation (TikTok/Instagram only), SHA-256 dedup, accepts `page_title`/`page_description`/`thumbnail_url`, writes `extraction_jobs` row, returns `{ job_id, message }`. Removed `after(enrichReel())`. |
+| `src/app/api/ingest-reel/route.ts` | **Modified** | Strict TikTok/Instagram/Facebook reel URL validation, database-backed per-user rate limits, SHA-256 dedup, accepts `page_title`/`page_description`/`thumbnail_url`, writes `extraction_jobs` row, returns `{ job_id, message }`. Removed `after(enrichReel())`. |
 | `src/app/api/share-target/route.ts` | **Created** | Android PWA share target. Session-authed. Deduplicates, queues extraction job, redirects to `/?saved=true`. |
 | `public/manifest.json` | **Created** | PWA manifest with `share_target` for Android. |
 | `src/app/layout.tsx` | **Modified** | Added `metadata.manifest = '/manifest.json'`. |
-| `src/lib/platform.ts` | **Created** | Shared TikTok/Instagram URL platform detection for app API routes. |
+| `src/lib/platform.ts` | **Created** | Strict shared TikTok/Instagram/Facebook reel URL parsing and canonicalisation for app API routes. |
 | `src/lib/actions/settings.ts` | **Created** | `regenerateToken()` server action — generates new 32-byte hex token, updates DB, revalidates `/settings`. |
 | `src/components/settings/copy-token.tsx` | **Modified** | Added two-tap Regenerate button (first tap shows warning, second confirms). `min-h-[44px]` tap targets for mobile. |
 | `src/components/inbox/reel-card.tsx` | **Modified** | Added `Google Maps ↗` link when Google place ID or coordinates are available. |

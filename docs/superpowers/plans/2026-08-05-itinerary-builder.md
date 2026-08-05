@@ -41,7 +41,7 @@ You are working in **We Should Go**, a private travel app for one family. Read `
 | File | Responsibility |
 |---|---|
 | `vitest.config.ts` | Test runner config with the `@/` alias |
-| `supabase/migrations/009_itinerary_blocks.sql` | New tables, drops, RLS |
+| `supabase/migrations/010_itinerary_blocks.sql` | New tables, drops, RLS |
 | `src/lib/types.ts` | *(modify)* Add `ItineraryBlock`, `TripChatMessage` |
 | `src/lib/itinerary/time.ts` | Pure minute/`HH:MM` conversion, block end times |
 | `src/lib/itinerary/travel.ts` | Haversine distance, travel-time estimate |
@@ -120,7 +120,7 @@ git commit -m "chore: add vitest test runner"
 ## Task 2: Migration and types
 
 **Files:**
-- Create: `supabase/migrations/009_itinerary_blocks.sql`
+- Create: `supabase/migrations/010_itinerary_blocks.sql`
 - Modify: `src/lib/types.ts`
 
 - [ ] **Step 1: Confirm the drop targets are empty**
@@ -137,7 +137,7 @@ Expected: all `0`. **If any is non-zero, stop and raise it** — the migration d
 
 - [ ] **Step 2: Write the migration**
 
-Create `supabase/migrations/009_itinerary_blocks.sql`:
+Create `supabase/migrations/010_itinerary_blocks.sql`:
 
 ```sql
 -- ============================================================
@@ -304,7 +304,7 @@ Expected: no errors. If `TripAnchor` or `TripMember` were imported anywhere, the
 - [ ] **Step 6: Commit**
 
 ```bash
-git add supabase/migrations/009_itinerary_blocks.sql src/lib/types.ts
+git add supabase/migrations/010_itinerary_blocks.sql src/lib/types.ts
 git commit -m "feat: add itinerary_blocks schema and types"
 ```
 
@@ -2414,7 +2414,7 @@ import Link from 'next/link'
 
 - [ ] **Step 2: Clear the stale migration warning**
 
-In `STATUS.md`, delete the "Manual step still required" line near the top and the "Pending production database action" block. Migrations 005, 006 and 007 are confirmed applied. Add migration 009 to the migrations list.
+In `STATUS.md`, delete the "Manual step still required" line near the top and the "Pending production database action" block. Migrations 005, 006 and 007 are confirmed applied. Add migration 010 to the migrations list.
 
 - [ ] **Step 3: Update the project context**
 

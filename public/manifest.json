@@ -29,6 +29,7 @@
     "method": "POST",
     "enctype": "application/x-www-form-urlencoded",
     "params": {
+      "text": "text",
       "url": "url"
     }
   }

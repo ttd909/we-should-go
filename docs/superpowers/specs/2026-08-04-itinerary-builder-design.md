@@ -109,7 +109,7 @@ End to end, in order.
 
 ## Schema
 
-New migration: `supabase/migrations/009_itinerary_blocks.sql`.
+New migration: `supabase/migrations/010_itinerary_blocks.sql`.
 
 ```sql
 create type public.block_type as enum (
@@ -387,7 +387,7 @@ Cache resolved place data on the block rather than re-fetching.
 
 ## Risks
 
-1. **Migration 009 is destructive** and drops three things. Schema state was
+1. **Migration 010 is destructive** and drops three things. Schema state was
    verified on 2026-08-05 — everything through 008 is applied, and all three
    drop targets are present and unmodified. Remaining step is confirming they
    hold no rows (see the Schema section), then running against a branch first.

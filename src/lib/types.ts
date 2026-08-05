@@ -1,4 +1,4 @@
-export type ReelPlatform = 'instagram' | 'tiktok' | 'other'
+export type ReelPlatform = 'instagram' | 'tiktok' | 'facebook' | 'other'
 export type ReelStatus = 'inbox' | 'saved' | 'scheduled' | 'rejected' | 'needs_review'
 export type PlaceType = 'cafe' | 'hotel' | 'restaurant' | 'viewpoint' | 'experience' | 'other'
 export type TripStatus = 'idea' | 'planning' | 'booked' | 'completed'

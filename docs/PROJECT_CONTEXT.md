@@ -6,7 +6,7 @@ Last updated: 2026-05-20
 
 We Should Go is a private/shared travel inspiration app built around Dreamlists.
 
-A Dreamlist is the shared or personal place where travel Ideas live. Users save TikTok and Instagram reels as Ideas, keep future trip inspiration together, and later turn those Ideas into Trips and itinerary plans.
+A Dreamlist is the shared or personal place where travel Ideas live. Users save TikTok, Instagram, and public Facebook reels as Ideas, keep future trip inspiration together, and later turn those Ideas into Trips and itinerary plans.
 
 The core emotional idea is:
 
@@ -185,7 +185,8 @@ Trip planning UI is still basic.
 - `POST /api/ingest-reel`
   - Accepts browser session auth or Bearer token auth.
   - Used by web paste box and iOS Shortcut.
-  - Validates TikTok/Instagram URLs.
+  - Strictly validates TikTok, Instagram, and Facebook reel hostnames and paths.
+  - Limits each authenticated user to 10 new reels per minute and 100 per day.
   - Deduplicates by `url_hash` within a Dreamlist.
   - Creates `reel_submissions`.
   - Creates `extraction_jobs`.
@@ -235,11 +236,12 @@ Existing migrations:
 - `006_thumbnail_url.sql`
 - `007_google_photo_name.sql`
 - `008_dreamlists.sql`
+- `009_ingestion_rate_limits.sql`
 
 Important:
 
 - Run migrations manually in Supabase SQL Editor when not using Supabase CLI.
-- `008_dreamlists.sql` is required for the current app.
+- Migrations through `009_ingestion_rate_limits.sql` are required for the current app.
 - The example seed file `supabase/seed_dreamlists_example.sql` is optional and must be edited to use real signed-up user emails before running.
 
 ## Environment Variables

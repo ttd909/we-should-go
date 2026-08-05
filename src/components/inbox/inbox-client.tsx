@@ -250,7 +250,7 @@ export function InboxClient({ reels, trips, dreamlists, currentDreamlist }: Inbo
           <p className="text-sm text-muted-foreground py-4">
             {filter !== 'all'
               ? 'No ideas match this filter.'
-              : 'No ideas yet. Paste a TikTok or Instagram reel above to save your first one.'}
+              : 'No ideas yet. Paste a TikTok, Instagram, or Facebook reel above to save your first one.'}
           </p>
         )}
 
