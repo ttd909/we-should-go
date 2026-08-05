@@ -44,6 +44,7 @@ SOFT_YTDLP_ERRORS = (
     '429',
     'cannot parse data',
     'no video formats found',
+    'empty media response',
 )
 
 _whisper_model = None
