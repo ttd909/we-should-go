@@ -23,7 +23,7 @@ export function InviteLinkButton({ dreamlistId }: { dreamlistId: string }) {
               const token = await createDreamlistInvite(dreamlistId)
               const url = `${window.location.origin}/join/${token}`
               await navigator.clipboard.writeText(url)
-              setMessage('Invite link copied')
+              setMessage('Link copied — anyone with it can join')
             } catch (error) {
               setMessage(error instanceof Error ? error.message : 'Could not copy invite link')
             }

@@ -44,7 +44,12 @@ export default async function DreamlistsPage() {
                 <p className="text-xs text-muted-foreground capitalize">{dreamlist.type}</p>
               </div>
               {dreamlist.owner_id === user.id && dreamlist.type === 'shared' && (
-                <InviteLinkButton dreamlistId={dreamlist.id} />
+                <div className="shrink-0 space-y-1">
+                  <InviteLinkButton dreamlistId={dreamlist.id} />
+                  <p className="text-[11px] text-muted-foreground text-right">
+                    Anyone with the link can join
+                  </p>
+                </div>
               )}
             </div>
           ))}

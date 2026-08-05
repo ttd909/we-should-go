@@ -88,7 +88,6 @@ export async function joinDreamlistByToken(token: string) {
     .maybeSingle()
 
   if (inviteError || !invite) throw new Error('Invite link not found')
-  if (invite.used_at) throw new Error('This invite link has already been used')
   if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
     throw new Error('This invite link has expired')
   }
@@ -106,10 +105,15 @@ export async function joinDreamlistByToken(token: string) {
 
   if (memberError) throw new Error(memberError.message)
 
-  await admin
-    .from('dreamlist_invites')
-    .update({ used_at: new Date().toISOString() })
-    .eq('id', invite.id)
+  // Record when the link was first used — kept for audit purposes but not
+  // enforced as a blocker: invite links are intentionally reusable so that
+  // multiple people can join from the same shared link.
+  if (!invite.used_at) {
+    await admin
+      .from('dreamlist_invites')
+      .update({ used_at: new Date().toISOString() })
+      .eq('id', invite.id)
+  }
 
   revalidatePath('/')
   revalidatePath('/dreamlists')
