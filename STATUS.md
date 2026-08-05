@@ -16,13 +16,13 @@
 
 **What was built:**
 - Next.js 16 app, Supabase for auth + database
-- Google OAuth login (`/login`, `/auth/callback`)
+- Supabase email/password login, account creation, and password recovery (`/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`)
 - `profiles` table auto-created on signup, includes `personal_api_token` (random 32-byte hex)
 - `reel_submissions`, `trips`, `trip_members`, `trip_anchors`, `trip_days` tables with full RLS
 - Extraction now runs in the Railway worker; the Vercel app only validates URLs and queues jobs
 - `/api/ingest-reel` — accepts URL via web form or Bearer token
 - Inbox UI: reel cards, enrichment polling, delete
-- Settings page with token display and copy button
+- Settings page with token display, copy button, and password change form
 - Basic trips create/list
 
 **Files created in Phase 1:**

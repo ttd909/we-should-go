@@ -1,6 +1,6 @@
 # We Should Go - Project Context
 
-Last updated: 2026-05-20
+Last updated: 2026-08-05
 
 ## App Vision
 
@@ -49,9 +49,12 @@ Example copy:
 
 ### Auth
 
-- Login uses Supabase email magic links.
-- Auth callback route is `/auth/callback`.
-- Magic-link redirects should use `NEXT_PUBLIC_SITE_URL`, currently intended as:
+- Routine login uses Supabase email and password at `/login`.
+- New users create an account at `/signup`.
+- Existing magic-link users can set their first password through `/forgot-password` and `/reset-password`.
+- Signed-in users can change their password in Settings.
+- Email confirmation and password recovery use the auth callback route at `/auth/callback`.
+- Auth email redirects use `NEXT_PUBLIC_SITE_URL`, currently intended as:
 
 `https://www.weshouldgo.app/auth/callback`
 
@@ -150,8 +153,9 @@ Trip planning UI is still basic.
 
 ### Core App
 
-- Email magic-link login.
-- Auth callback route.
+- Email/password login and account creation.
+- Password recovery and signed-in password changes.
+- Auth callback route for email confirmation and password recovery.
 - Middleware/proxy protects page routes.
 - API routes bypass browser login redirects.
 - Ideas page with paste box and Idea feed.
@@ -319,7 +323,7 @@ If navigation still feels slow, next likely optimisations:
 
 1. Confirm Vercel has `NEXT_PUBLIC_SITE_URL=https://www.weshouldgo.app`.
 2. Confirm Supabase Auth has `https://www.weshouldgo.app/auth/callback` in allowed redirect URLs.
-3. Test magic-link login from another phone.
+3. Set a password in Settings (if already signed in), then test password login from another phone.
 4. Test iOS Shortcut save:
    - It should save into personal `My Dreamlist`.
 5. Test in-app paste save:

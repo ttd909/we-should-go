@@ -21,7 +21,13 @@ export function Nav() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const dreamlist = searchParams.get('dreamlist')
-  const hideChrome = pathname.startsWith('/login') || pathname.startsWith('/auth')
+  const hideChrome = [
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    '/auth',
+  ].some((route) => pathname === route || pathname.startsWith(`${route}/`))
 
   if (hideChrome) return null
 

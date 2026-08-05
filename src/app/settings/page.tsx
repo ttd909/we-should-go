@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CopyToken } from '@/components/settings/copy-token'
+import { ChangePasswordForm } from '@/components/settings/change-password-form'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -41,6 +42,7 @@ export default async function SettingsPage() {
       <section className="space-y-2">
         <h2 className="text-base font-medium">Account</h2>
         <p className="text-sm text-muted-foreground">{user.email}</p>
+        <ChangePasswordForm />
       </section>
     </main>
   )
